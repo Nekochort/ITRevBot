@@ -1,13 +1,16 @@
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
 from aiogram.utils import executor
+import psycopg2
 
-from config import TOKEN
+from config import TOKEN, DB_URI
 
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot)
 
+conn = psycopg2.connect(DB_URI, ssl_mode = "require")
+cur = conn.cursor()
 
 @dp.message_handler(commands=['start'])
 async def process_start_command(message: types.Message):
