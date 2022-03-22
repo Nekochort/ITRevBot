@@ -11,7 +11,7 @@ dp = Dispatcher(bot)
 
 @dp.message_handler(commands=['start'])
 async def process_start_command(message: types.Message):
-    await message.reply("Привет!\nНапиши мне что-нибудь!")
+    await message.reply("Привет!\nНапиши-ка мне любой текст и я его повторю!")
 
 
 @dp.message_handler(commands=['help'])
