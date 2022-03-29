@@ -8,6 +8,10 @@ from aiogram.utils import executor
 import psycopg
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
+from aiogram.types import ReplyKeyboardRemove, \
+    ReplyKeyboardMarkup, KeyboardButton, \
+    InlineKeyboardMarkup, InlineKeyboardButton
+import telebot
 
 from config import TOKEN, DB_URI
 
@@ -190,15 +194,7 @@ class redun(StatesGroup):
     unred = State()
 
 # Редактирование username
-async def username_red(message: types.Message):
-    send = message.text
-    ls = send.split("\n", 1)
-    username = ls[0]
-    username = "'" + username + "'"
-    newusername = ls[1]
-    await message.answer("Username: " + ls[0])
-    await message.answer("Устанавливаемый username: " + ls[1])
-    newusername = "'" + newusername + "'"
+async def username_red(chatdb, newusername, username):
     async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
         async with aconn.cursor() as acur:
             await acur.execute(f"UPDATE {chatdb} SET username = {newusername} WHERE username = {username}")
@@ -209,19 +205,27 @@ async def unred_command(message: types.Message, state: FSMContext):
     await message.answer(f'Вы собираетесь изменить username пользвателя из таблицы {chatdb}')
     await message.answer("Введите username пользователя, а также устанавливаемый username")
     await redun.unred.set()
-    await username_red(message)
-    await state.finish()
 
-# Редактирование ФИО
-async def fio_red(message: types.Message):
+@dp.message_handler(state=redun.unred, content_types=types.ContentTypes.TEXT)
+async def fname_step(message: types.Message, state: FSMContext):
+    global chatdb
     send = message.text
     ls = send.split("\n", 1)
     username = ls[0]
     username = "'" + username + "'"
-    newfio = ls[1]
+    newusername = ls[1]
     await message.answer("Username: " + ls[0])
-    await message.answer("Устанавливаемое ФИО: " + ls[1])
-    newfio = "'" + newfio + "'"
+    await message.answer("Устанавливаемый username: " + ls[1])
+    newusername = "'" + newusername + "'"
+    try:
+        await username_red(chatdb, newusername, username)
+        await message.reply(f"Username пользователя {username} изменён в таблице {chatdb}")
+    except:
+        await message.answer("Проверьте данные!")
+    await state.finish()
+
+# Редактирование ФИО
+async def fio_red(chatdb, newfio, username):
     async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
         async with aconn.cursor() as acur:
             await acur.execute(f"UPDATE {chatdb} SET fio = {newfio} WHERE username = {username}")
@@ -234,19 +238,27 @@ async def start_command(message: types.Message, state: FSMContext):
     await message.answer(f'Вы собираетесь изменить ФИО пользвателя из таблицы {chatdb}')
     await message.answer("Введите username пользователя, а также ФИО, которое нужно установить")
     await redfio.fiored.set()
-    await fio_red(message)
-    await state.finish()
 
-# Редактирование ДР
-async def dr_red(message):
+@dp.message_handler(state=redfio.fiored, content_types=types.ContentTypes.TEXT)
+async def fname_step(message: types.Message, state: FSMContext):
+    global chatdb
     send = message.text
     ls = send.split("\n", 1)
     username = ls[0]
     username = "'" + username + "'"
-    newbirthday = ls[1]
+    newfio = ls[1]
     await message.answer("Username: " + ls[0])
-    await message.answer("Устанавливаемый день рождения: " + ls[1])
-    newbirthday = "'" + newbirthday + "'"
+    await message.answer("Устанавливаемое ФИО: " + ls[1])
+    newfio = "'" + newfio + "'"
+    try:
+        await fio_red(chatdb, newfio, username)
+        await message.reply(f"ФИО пользователя {username} изменены в таблице {chatdb}")
+    except:
+        await message.answer("Проверьте данные!")
+    await state.finish()
+
+# Редактирование ДР
+async def dr_red(chatdb, newbirthday, username):
     async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
         async with aconn.cursor() as acur:
             await acur.execute(f"UPDATE {chatdb} SET birthday = {newbirthday} WHERE username = {username}")
@@ -259,24 +271,28 @@ async def start_command(message: types.Message, state: FSMContext):
     await message.answer(f'Вы собираетесь изменить день рождения пользвателя из таблицы {chatdb}')
     await message.answer("Введите username пользователя, а также устанавливаемую дату дня рождения")
     await redbd.bdred.set()
-    await dr_red(message)
+
+@dp.message_handler(state=redbd.bdred, content_types=types.ContentTypes.TEXT)
+async def fname_step(message: types.Message, state: FSMContext):
+    global chatdb
+    send = message.text
+    ls = send.split("\n", 1)
+    username = ls[0]
+    username = "'" + username + "'"
+    newbirthday = ls[1]
+    await message.answer("Username: " + ls[0])
+    await message.answer("Устанавливаемый день рождения: " + ls[1])
+    newbirthday = "'" + newbirthday + "'"
+    try:
+        await dr_red(chatdb, newbirthday, username)
+        await message.reply(f"День рождения {username} изменён в таблице {chatdb}")
+    except:
+        await message.answer("Проверьте данные!")
     await state.finish()
 
-
 # Редактирвание отпусков
-async def vac_red(message):
+async def vac_red(chatdb, newvacationstart, newvacationend, username):
     try:
-        send = message.text
-        ls = send.split("\n", 2)
-        username = ls[0]
-        newvacationstart = ls[1]
-        newvacationend = ls[2]
-        await message.answer("Username: " + ls[0])
-        await message.answer("Устанавливаемая дата начала отпуска: " + ls[1])
-        await message.answer("Устанавливаемая дата конца отпуска: " + ls[2])
-        username = "'" + username + "'"
-        newvacationstart = "'" + newvacationstart + "'"
-        newvacationend = "'" + newvacationend + "'"
         async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
             async with aconn.cursor() as acur:
                 await acur.execute(f"UPDATE {chatdb} SET vacation_start = {newvacationstart} WHERE username = {username}")
@@ -295,8 +311,161 @@ async def start_command(message: types.Message, state: FSMContext):
     await message.answer("Введите username пользователя, а также устанавливаемые даты начала и конца отпуска")
     await redvac.vacred.set()
     await vac_red(message)
+
+@dp.message_handler(state=redvac.vacred, content_types=types.ContentTypes.TEXT)
+async def fname_step(message: types.Message, state: FSMContext):
+    global chatdb
+    send = message.text
+    ls = send.split("\n", 2)
+    username = ls[0]
+    newvacationstart = ls[1]
+    newvacationend = ls[2]
+    await message.answer("Username: " + ls[0])
+    await message.answer("Устанавливаемая дата начала отпуска: " + ls[1])
+    await message.answer("Устанавливаемая дата конца отпуска: " + ls[2])
+    username = "'" + username + "'"
+    newvacationstart = "'" + newvacationstart + "'"
+    newvacationend = "'" + newvacationend + "'"
+    try:
+        await vac_red(chatdb, newvacationstart, newvacationend, username)
+        await message.reply(f"Даты отпусков {username} изменены в таблице {chatdb}")
+    except:
+        await message.answer("Проверьте данные!")
     await state.finish()
 
+# @dp.message_handler(commands=["edit_notif_settings"])
+# def menu(message):
+#     start_menu = types.ReplyKeyboardMarkup(
+#         row_width=3, resize_keyboard=True, one_time_keyboard=True
+#     )
+#     start_menu.add(
+#         "День рождения",
+#         "Отпуска",
+#         "Списание рабочего времени",
+#         "Еженедельное совещание",
+#     )
+#     bot.send_message(
+#         message.chat.id,
+#         "Выберите уведомление на которое хотите изменить подписку",
+#         reply_markup=start_menu,
+#     )
+#
+#     @bot.message_handler(content_types=["text"])
+#     def handle_text(message):
+#         if message.text == "День рождения":
+#             source_menu = types.ReplyKeyboardMarkup(
+#                 row_width=3, resize_keyboard=True, one_time_keyboard=True
+#             )
+#             source_menu.add("Подписаться", "Отписаться")
+#             source_menu.add("Назад")
+#             s = bot.send_message(
+#                 message.chat.id, "Выберите вариант: ", reply_markup=source_menu
+#             )
+#             bot.register_next_step_handler(s, handle_text1)
+#         elif message.text == "Отпуска":
+#             source_menu = types.ReplyKeyboardMarkup(
+#                 row_width=3, resize_keyboard=True, one_time_keyboard=True
+#             )
+#             source_menu.add(
+#                 "Подписаться на уведомления об отпусках",
+#                 "Отписаться от уведомлений об отпусках",
+#             )
+#             source_menu.add("Назад")
+#             s = bot.send_message(
+#                 message.chat.id, "Выберите вариант: ", reply_markup=source_menu
+#             )
+#             bot.register_next_step_handler(s, handle_text2)
+#         elif message.text == "Списание рабочего времени":
+#             source_menu = types.ReplyKeyboardMarkup(
+#                 row_width=3, resize_keyboard=True, one_time_keyboard=True
+#             )
+#             source_menu.add(
+#                 "Подписаться на уведомления о списании рабочего времени",
+#                 "Отписаться от уведомлений о списании рабочего времени"
+#             )
+#             source_menu.add("Назад")
+#             s = bot.send_message(
+#                 message.chat.id, "Выберите вариант: ", reply_markup=source_menu
+#             )
+#             bot.register_next_step_handler(s, handle_text3)
+#         elif message.text == "Еженедельное совещание":
+#             source_menu = types.ReplyKeyboardMarkup(
+#                 row_width=3, resize_keyboard=True, one_time_keyboard=True
+#             )
+#             source_menu.add(
+#                 "Подписаться на уведомления о EC", "Отписаться от уведомлений о EC"
+#             )
+#             source_menu.add("Назад")
+#             s = bot.send_message(
+#                 message.chat.id, "Выберите вариант: ", reply_markup=source_menu
+#             )
+#             bot.register_next_step_handler(s, handle_text4)
+#
+#
+# def handle_text1(message):
+#     if message.text == "Отписаться":
+#         bot.send_message(
+#             message.chat.id, "Вы отписались от уведомлений о Днях рождения"
+#         )
+#         async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+#             async with aconn.cursor() as acur:
+#                 await acur.execute(f"UPDATE {notifinchatid} SET birthdaynotif = false WHERE id = {message.from_user.id}")
+#
+#     elif message.text == "Подписаться":
+#         bot.send_message(
+#             message.chat.id, "Вы подписались на уведомления о Днях рождения"
+#         )
+#
+#         async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+#             async with aconn.cursor() as acur:
+#                 await acur.execute(f"UPDATE {notifinchatid} SET birthdaynotif = true WHERE id = {message.from_user.id}")
+#     elif message.text == "Назад":
+#         menu(message)
+#
+#
+# def handle_text2(message):
+#     if message.text == "Отписаться от уведомлений об отпусках":
+#         bot.send_message(message.chat.id, "Вы отписались от уведомлений об отпусках")
+#         async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+#             async with aconn.cursor() as acur:
+#                 await acur.execute(f"UPDATE {notifinchatid} SET vacationnotif = false WHERE id = {message.from_user.id}")
+#     elif message.text == "Подписаться на уведомления об отпусках":
+#         bot.send_message(message.chat.id, "Вы подписались на уведомления об отпусках")
+#         async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+#             async with aconn.cursor() as acur:
+#                 await acur.execute(f"UPDATE {notifinchatid} SET vacationnotif = true WHERE id = {message.from_user.id}")
+#     elif message.text == "Назад":
+#         menu(message)
+#
+#
+# def handle_text3(message):
+#     if message.text == "Отписаться от уведомлений о списании рабочего времени":
+#         bot.send_message(message.chat.id, "Вы отписались от уведомлений о списании рабочего времени")
+#         async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+#             async with aconn.cursor() as acur:
+#                 await acur.execute(f"UPDATE {notifinchatid} SET timemanagment = false WHERE id = {message.from_user.id}")
+#     elif message.text == "Подписаться на уведомления о списании рабочего времени":
+#         bot.send_message(message.chat.id, "Вы подписались на уведомления о списании рабочего времени")
+#         async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+#             async with aconn.cursor() as acur:
+#                 await acur.execute(f"UPDATE {notifinchatid} SET timemanagment = true WHERE id = {message.from_user.id}")
+#     elif message.text == "Назад":
+#         menu(message)
+#
+#
+# def handle_text4(message):
+#     if message.text == "Отписаться от уведомлений о EC":
+#         bot.send_message(message.chat.id, "Вы отписались от уведомлений о ЕС")
+#         async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+#             async with aconn.cursor() as acur:
+#                 await acur.execute(f"UPDATE {notifinchatid} SET weekmeeting = false WHERE id = {message.from_user.id}")
+#     elif message.text == "Подписаться на уведомления о EC":
+#         bot.send_message(message.chat.id, "Вы подписались на уведомления о ЕС")
+#         async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+#             async with aconn.cursor() as acur:
+#                 await acur.execute(f"UPDATE {notifinchatid} SET weekmeeting = true WHERE id = {message.from_user.id}")
+#     elif message.text == "Назад":
+#         menu(message)
 
 
 if __name__ == '__main__':
