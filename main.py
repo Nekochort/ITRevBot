@@ -3,6 +3,7 @@ from asyncio import WindowsSelectorEventLoopPolicy
 
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
+from aiogram.dispatcher.filters import state
 from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.utils import executor
 import psycopg
@@ -10,7 +11,7 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.types import ReplyKeyboardRemove, \
     ReplyKeyboardMarkup, KeyboardButton, \
-    InlineKeyboardMarkup, InlineKeyboardButton
+    InlineKeyboardMarkup, InlineKeyboardButton, message
 import telebot
 
 from config import TOKEN, DB_URI
@@ -41,10 +42,13 @@ async def start_command(message: types.Message, state: FSMContext):
     await addnotifdb.addnotdb.set()
     async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
         async with aconn.cursor() as acur:
-            await acur.execute(f"CREATE TABLE IF NOT EXISTS {notifinchatid} (id Bigint UNIQUE, username VARCHAR(60) UNIQUE, timemanagment BOOLEAN, birthdaynotif BOOLEAN, weekmeeting BOOLEAN, vacationnotif BOOLEAN )")
-            await acur.execute(f"INSERT INTO {notifinchatid}(id, username) SELECT id, username FROM {chatdb}")
-            await acur.execute(f"UPDATE {notifinchatid} SET timemanagment = true,birthdaynotif = true, weekmeeting = true, vacationnotif = true  ")
-            await message.answer(f"Таблица уведомлений для {chatdb} успешно создана!")
+            try:
+                await acur.execute(f"CREATE TABLE IF NOT EXISTS {notifinchatid} (id Bigint UNIQUE, username VARCHAR(60) UNIQUE, timemanagment BOOLEAN, birthdaynotif BOOLEAN, weekmeeting BOOLEAN, vacationnotif BOOLEAN )")
+                await acur.execute(f"INSERT INTO {notifinchatid}(id, username) SELECT id, username FROM {chatdb}")
+                await acur.execute(f"UPDATE {notifinchatid} SET timemanagment = true,birthdaynotif = true, weekmeeting = true, vacationnotif = true  ")
+            except:
+                pass
+        await message.answer(f"Таблица уведомлений для {chatdb} успешно создана!")
     await state.finish()
 
 
@@ -114,12 +118,15 @@ class add(StatesGroup):
     useradd = State()
 
 
-async def addtodb(chatdb,userid,username,fio,birthday,vacation_start,vacation_end):
+async def addtodb(chatdb,userid,username,fio,birthday,vacation_start,vacation_end, notifinchatid):
     async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
         async with aconn.cursor() as acur:
             await acur.execute(
                 f"INSERT INTO {chatdb} (id,username, fio, birthday, vacation_start, vacation_end) VALUES ({userid},{username}, {fio}, {birthday}, {vacation_start}, {vacation_end})")
-
+            await acur.execute(
+                f"INSERT INTO {notifinchatid} (id,username) VALUES ({userid},{username})")
+            await acur.execute(
+                f"UPDATE {notifinchatid} SET timemanagment = true,birthdaynotif = true, weekmeeting = true, vacationnotif = true WHERE username = {username} ")
 
 
 @dp.message_handler(commands="add_to_db", state="*")
@@ -132,6 +139,8 @@ async def add_step(message: types.Message, state: FSMContext):
 @dp.message_handler(state=add.useradd, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
     global chatdb
+    global notifinchatid
+    notifinchatid = "Notif" + chatdb
     send = message.text
     ls = send.split("\n", 5)
     username = ls[0]
@@ -146,7 +155,7 @@ async def fname_step(message: types.Message, state: FSMContext):
     vacation_end = ls[5]
     vacation_end = "'" + vacation_end + "'"
     try:
-        await addtodb(chatdb,userid,username,fio, birthday, vacation_start, vacation_end)
+        await addtodb(chatdb,userid,username,fio, birthday, vacation_start, vacation_end, notifinchatid)
         await message.reply(f"Данные о пользователе {username} занесены в таблицу {chatdb}")
     except:
         await message.answer("Проверьте данные!")
@@ -332,6 +341,82 @@ async def fname_step(message: types.Message, state: FSMContext):
     except:
         await message.answer("Проверьте данные!")
     await state.finish()
+
+class shw(StatesGroup):
+    bd = State()
+
+@dp.message_handler(commands="show_all_birthday", state="*")
+async def showbd(message, state: FSMContext):
+    global notifinchatid
+    notifinchatid = "Notif" + chatdb
+    await message.reply("Вывожу всех пользователей, подписанных на рассылку о ДР")
+    await shw.bd.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT username FROM {notifinchatid} WHERE birthdaynotif = true")
+            rec = await acur.fetchall()
+            for row in rec:
+                await message.answer(row[0])
+    await state.finish()
+
+class shw1(StatesGroup):
+    vac = State()
+
+@dp.message_handler(commands="show_all_vacation", state="*")
+async def showbd(message, state: FSMContext):
+    global notifinchatid
+    notifinchatid = "Notif" + chatdb
+    await message.reply("Вывожу всех пользователей, подписанных на рассылку об отпусках")
+    await shw1.vac.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT username FROM {notifinchatid} WHERE weekmeeting = true")
+            rec1 = await acur.fetchall()
+            for row in rec1:
+                await message.answer(row[0])
+    await state.finish()
+
+class shw2(StatesGroup):
+    time = State()
+
+@dp.message_handler(commands="show_all_time", state="*")
+async def showbd(message, state: FSMContext):
+    global notifinchatid
+    notifinchatid = "Notif" + chatdb
+    await message.reply("Вывожу всех пользователей, подписанных на рассылку о списании времени")
+    await shw2.time.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT username FROM {notifinchatid} WHERE timemanagment = true")
+            rec2 = await acur.fetchall()
+            for row in rec2:
+                await message.answer(row[0])
+    await state.finish()
+
+class shw3(StatesGroup):
+    meeting = State()
+
+@dp.message_handler(commands="show_all_weekmeeting", state="*")
+async def showbd(message, state: FSMContext):
+    global notifinchatid
+    notifinchatid = "Notif" + chatdb
+    await message.reply("Вывожу всех пользователей, подписанных на рассылку о совещаниях")
+    await shw3.meeting.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT username FROM {notifinchatid} WHERE weekmeeting = true")
+            rec3 = await acur.fetchall()
+            for row in rec3:
+                await message.answer(row[0])
+    await state.finish()
+
+async def force_sub_bd(username):
+    try:
+        async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+            async with aconn.cursor() as acur:
+                await acur.execute(f"UPDATE {notifinchatid} SET birthdaynotif = true WHERE username = {username}")
+    except:
+        pass
 
 # @dp.message_handler(commands=["edit_notif_settings"])
 # def menu(message):
