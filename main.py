@@ -16,6 +16,10 @@ import telebot
 
 from config import TOKEN, DB_URI
 
+from aiogram.dispatcher.filters import BoundFilter
+
+
+
 class FSMAddTbl(StatesGroup):
     addtogrptable = State()
 class FSMDel(StatesGroup):
@@ -29,6 +33,18 @@ dp = Dispatcher(bot, storage=storage)
 asyncio.set_event_loop_policy(WindowsSelectorEventLoopPolicy())
 
 chatdb = "NameOfDataBase"
+
+class MyFilter(BoundFilter):
+    key = 'is_admin'
+
+    def __init__(self, is_admin):
+        self.is_admin = is_admin
+
+    async def check(self, message: types.Message):
+        member = await bot.get_chat_member(message.chat.id, message.from_user.id)
+        return member.is_chat_admin()
+
+dp.filters_factory.bind(MyFilter)
 
 # Создание таблицы с подписками на уведы
 class addnotifdb(StatesGroup):
@@ -51,6 +67,32 @@ async def start_command(message: types.Message, state: FSMContext):
         await message.answer(f"Таблица уведомлений для {chatdb} успешно создана!")
     await state.finish()
 
+
+async def adminreg(adminlist, userid):
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"CREATE TABLE IF NOT EXISTS {adminlist} (id Bigint UNIQUE)")
+            try:
+                await acur.execute(
+                    f"INSERT INTO {adminlist} (id) VALUES ({userid})")
+            except:
+                await bot.send_message(message.Chat.id, "Админ уже зарегестрирован")
+class adreg(StatesGroup):
+    regad = State()
+
+@dp.message_handler(is_admin = True,commands='reg_admin', state="*") # Создние таблицы чата
+async def process_add_db_command(message: types.Message, state: FSMContext):
+    global chatdb
+    chatdb = message.chat.id
+    chatdb = str(chatdb)
+    chatdb = chatdb.replace("-", "")
+    chatdb = "group" + chatdb
+    adminlist = "admin" + chatdb
+    userid = message.from_user.id
+    await adreg.regad.set()
+    await adminreg(adminlist, userid)
+    await message.reply(f"Таблица {adminlist} успешно создана!")
+    await state.finish()
 
 async def adddb(chatdb):
     async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
