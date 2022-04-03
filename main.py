@@ -19,12 +19,12 @@ from config import TOKEN, DB_URI
 from aiogram.dispatcher.filters import BoundFilter
 
 
-
 class FSMAddTbl(StatesGroup):
     addtogrptable = State()
+
+
 class FSMDel(StatesGroup):
     deletefrmtable = State()
-
 
 
 bot = Bot(token=TOKEN)
@@ -33,6 +33,10 @@ dp = Dispatcher(bot, storage=storage)
 asyncio.set_event_loop_policy(WindowsSelectorEventLoopPolicy())
 
 chatdb = "NameOfDataBase"
+
+adminlist = "adminlist"
+
+listofadmins = []
 
 class MyFilter(BoundFilter):
     key = 'is_admin'
@@ -44,11 +48,14 @@ class MyFilter(BoundFilter):
         member = await bot.get_chat_member(message.chat.id, message.from_user.id)
         return member.is_chat_admin()
 
+
 dp.filters_factory.bind(MyFilter)
+
 
 # Создание таблицы с подписками на уведы
 class addnotifdb(StatesGroup):
     addnotdb = State()
+
 
 @dp.message_handler(commands=["add_notifdb"], state="*")
 async def start_command(message: types.Message, state: FSMContext):
@@ -59,30 +66,39 @@ async def start_command(message: types.Message, state: FSMContext):
     async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
         async with aconn.cursor() as acur:
             try:
-                await acur.execute(f"CREATE TABLE IF NOT EXISTS {notifinchatid} (id Bigint UNIQUE, username VARCHAR(60) UNIQUE, timemanagment BOOLEAN, birthdaynotif BOOLEAN, weekmeeting BOOLEAN, vacationnotif BOOLEAN )")
+                await acur.execute(
+                    f"CREATE TABLE IF NOT EXISTS {notifinchatid} (id Bigint UNIQUE, username VARCHAR(60) UNIQUE, timemanagment BOOLEAN, birthdaynotif BOOLEAN, weekmeeting BOOLEAN, vacationnotif BOOLEAN )")
                 await acur.execute(f"INSERT INTO {notifinchatid}(id, username) SELECT id, username FROM {chatdb}")
-                await acur.execute(f"UPDATE {notifinchatid} SET timemanagment = true,birthdaynotif = true, weekmeeting = true, vacationnotif = true  ")
+                await acur.execute(
+                    f"UPDATE {notifinchatid} SET timemanagment = true,birthdaynotif = true, weekmeeting = true, vacationnotif = true  ")
             except:
                 pass
         await message.answer(f"Таблица уведомлений для {chatdb} успешно создана!")
     await state.finish()
 
 
-async def adminreg(adminlist, userid):
+
+async def adminreg(mes,adminlist, userid):
     async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
         async with aconn.cursor() as acur:
             await acur.execute(f"CREATE TABLE IF NOT EXISTS {adminlist} (id Bigint UNIQUE)")
             try:
                 await acur.execute(
                     f"INSERT INTO {adminlist} (id) VALUES ({userid})")
+                await message.reply(f"Админ добавлен в {adminlist}!")
             except:
-                await bot.send_message(message.Chat.id, "Админ уже зарегестрирован")
+                await bot.send_message(mes, "Ты уже добавлен в таблицу!")
+
+
 class adreg(StatesGroup):
     regad = State()
 
-@dp.message_handler(is_admin = True,commands='reg_admin', state="*") # Создние таблицы чата
+@dp.message_handler(is_admin=True, commands='reg_admin', state="*")
 async def process_add_db_command(message: types.Message, state: FSMContext):
     global chatdb
+    global adminlist
+    global listofadmins
+    mes = message.chat.id
     chatdb = message.chat.id
     chatdb = str(chatdb)
     chatdb = chatdb.replace("-", "")
@@ -90,77 +106,12 @@ async def process_add_db_command(message: types.Message, state: FSMContext):
     adminlist = "admin" + chatdb
     userid = message.from_user.id
     await adreg.regad.set()
-    await adminreg(adminlist, userid)
-    await message.reply(f"Таблица {adminlist} успешно создана!")
+    await adminreg(mes,adminlist, userid)
+    print(listofadmins)
     await state.finish()
 
-async def adddb(chatdb):
-    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
-        async with aconn.cursor() as acur:
-            await acur.execute(f"CREATE TABLE IF NOT EXISTS {chatdb} (id Bigint UNIQUE, username VARCHAR(60) UNIQUE, fio VARCHAR(60), birthday VARCHAR(60),vacation_start VARCHAR(60), vacation_end VARCHAR(60))")
 
-class addchatdb(StatesGroup):
-    adddb = State()
-
-@dp.message_handler(commands='add_db', state="*") # Создние таблицы чата
-async def process_add_db_command(message: types.Message, state: FSMContext):
-    global chatdb
-    chatdb = message.chat.id
-    chatdb = str(chatdb)
-    chatdb = chatdb.replace("-", "")
-    chatdb = "group" + chatdb
-    await addchatdb.adddb.set()
-    await adddb(chatdb)
-    await message.reply(f"Таблица {chatdb} успешно создана! Прошу админа перейти в ЛС!")
-    await state.finish()
-
-async def deletedb(chatdb):
-    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
-        async with aconn.cursor() as acur:
-            await acur.execute(f"DROP TABLE {chatdb}")
-
-class deletetable(StatesGroup):
-    deltable = State()
-
-@dp.message_handler(commands=['delete_db'], state="*") # Удаление таблицы чата
-async def process_add_db_command(message: types.Message, state: FSMContext):
-    global chatdb
-    chatdb = message.chat.id
-    chatdb = str(chatdb)
-    chatdb = chatdb.replace("-", "")
-    chatdb = "group" + chatdb
-    await deletetable.deltable.set()
-    await deletedb(chatdb)
-    await message.reply(f"Таблица {chatdb} успешно удалена!")
-    await state.finish()
-
-async def deletnotifdb(chatdb):
-    notifinchatid = "Notif" + chatdb
-    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
-        async with aconn.cursor() as acur:
-            await acur.execute(f"DROP TABLE {notifinchatid}")
-
-class deletentable(StatesGroup):
-    delntable = State()
-
-@dp.message_handler(commands=['delete_notif_db'], state="*") # Удаление таблицы чата
-async def process_add_db_command(message: types.Message, state: FSMContext):
-    global chatdb
-    chatdb = message.chat.id
-    chatdb = str(chatdb)
-    chatdb = chatdb.replace("-", "")
-    chatdb = "group" + chatdb
-    notifinchatid = "Notif" + chatdb
-    await deletentable.delntable.set()
-    await deletnotifdb(chatdb)
-    await message.reply(f"Таблица {notifinchatid} успешно удалена!")
-    await state.finish()
-
-class add(StatesGroup):
-    useradd = State()
-
-
-async def addtodb(chatdb,userid,username,fio,birthday,vacation_start,vacation_end, notifinchatid):
+async def addtodb(chatdb, userid, username, fio, birthday, vacation_start, vacation_end, notifinchatid):
     async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
         async with aconn.cursor() as acur:
             await acur.execute(
@@ -171,14 +122,35 @@ async def addtodb(chatdb,userid,username,fio,birthday,vacation_start,vacation_en
                 f"UPDATE {notifinchatid} SET timemanagment = true,birthdaynotif = true, weekmeeting = true, vacationnotif = true WHERE username = {username} ")
 
 
+class ad1(StatesGroup):
+    ad = State()
+    ad1 = State()
+
+
 @dp.message_handler(commands="add_to_db", state="*")
-async def add_step(message: types.Message, state: FSMContext):
-    await message.reply(text=f'Вы добавляете пользователя в таблицу {chatdb}')
-    await message.answer("Введите данные о пользователе:\nПример:\nUsername: @nekochort\nID: 466280885\nФИО: Шорников Никита Сергеевич\nДень рождения: 27.10\nДата начала отпуска: 26.12.2021\nДата окончания отпуска: 28.01.2022")
-    await add.useradd.set()
+async def showbd(message, state: FSMContext):
+    global adminlist
+    global chatdb
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad1.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+                if adid in listofadmins:
+                    await message.reply(text=f'Вы добавляете пользователя в таблицу {chatdb}')
+                    await message.answer(
+                        "Введите данные о пользователе:\nПример:\nUsername: @nekochort\nID: 466280885\nФИО: Шорников Никита Сергеевич\nДень рождения: 27.10\nДата начала отпуска: 26.12.2021\nДата окончания отпуска: 28.01.2022")
+                    await state.finish()
+                    await ad1.ad1.set()
+            listofadmins.clear()
 
 
-@dp.message_handler(state=add.useradd, content_types=types.ContentTypes.TEXT)
+@dp.message_handler(state=ad1.ad1, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
     global chatdb
     global notifinchatid
@@ -197,67 +169,203 @@ async def fname_step(message: types.Message, state: FSMContext):
     vacation_end = ls[5]
     vacation_end = "'" + vacation_end + "'"
     try:
-        await addtodb(chatdb,userid,username,fio, birthday, vacation_start, vacation_end, notifinchatid)
+        await addtodb(chatdb, userid, username, fio, birthday, vacation_start, vacation_end,
+                      notifinchatid)
         await message.reply(f"Данные о пользователе {username} занесены в таблицу {chatdb}")
     except:
         await message.answer("Проверьте данные!")
     await state.finish()
 
-class delete(StatesGroup):
-    deluser = State()
+
+async def adddb(chatdb):
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(
+                f"CREATE TABLE IF NOT EXISTS {chatdb} (id Bigint UNIQUE, username VARCHAR(60) UNIQUE, fio VARCHAR(60), birthday VARCHAR(60),vacation_start VARCHAR(60), vacation_end VARCHAR(60))")
 
 
-async def delformdb(chatdb, username):
+class addchatdb(StatesGroup):
+    adddb = State()
+
+
+@dp.message_handler(is_admin=True, commands='add_db', state="*")  # Создние таблицы чата
+async def process_add_db_command(message: types.Message, state: FSMContext):
+    global chatdb
+    global listofadmins
+    adid = message.from_user.id
+    chatdb = message.chat.id
+    chatdb = str(chatdb)
+    chatdb = chatdb.replace("-", "")
+    chatdb = "group" + chatdb
+    await addchatdb.adddb.set()
+    await adddb(chatdb)
+    await message.reply(f"Таблица {chatdb} успешно создана! Прошу админа перейти в ЛС!")
+    await state.finish()
+
+
+async def deletedb(chatdb):
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"DROP TABLE {chatdb}")
+
+
+class ad2(StatesGroup):
+    ad = State()
+
+
+@dp.message_handler(commands="delete_db", state="*")
+async def delbd(message, state: FSMContext):
+    global adminlist
+    global chatdb
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad2.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+                if adid in listofadmins:
+                    await deletedb(chatdb)
+                    await message.reply(f"Таблица {chatdb} успешно удалена!")
+            listofadmins.clear()
+    await state.finish()
+
+
+async def deletnotifdb(chatdb):
+    notifinchatid = "Notif" + chatdb
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"DROP TABLE {notifinchatid}")
+
+
+class ad3(StatesGroup):
+    ad = State()
+
+
+@dp.message_handler(commands="delete_notif_db", state="*")
+async def delbd(message, state: FSMContext):
+    global adminlist
+    global chatdb
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad3.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+                if adid in listofadmins:
+                    notifinchatid = "Notif" + chatdb
+                    await deletnotifdb(chatdb)
+                    await message.reply(f"Таблица {notifinchatid} успешно удалена!")
+            listofadmins.clear()
+    await state.finish()
+
+
+async def delformdb(chatdb, notifinchatid, username):
     async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
         async with aconn.cursor() as acur:
             await acur.execute(f"DELETE FROM {chatdb} WHERE username = {username}")
+            await acur.execute(f"DELETE FROM {notifinchatid} WHERE username = {username}")
+
+
+class ad4(StatesGroup):
+    ad = State()
+    ad1 = State()
 
 
 @dp.message_handler(commands="delete_from_db", state="*")
-async def name_step(message: types.Message, state: FSMContext):
-    await message.reply(text=f'Вы удаляете данные из таблицы {chatdb}')
-    await message.answer("Введите username пользователя, которого хотите удалить из таблицы")
-    await delete.deluser.set()
+async def delfdb(message, state: FSMContext):
+    global adminlist
+    global chatdb
+    global notifinchatid
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad4.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+                if adid in listofadmins:
+                    await message.reply(text=f'Вы удаляете данные из таблицы {chatdb}')
+                    await message.answer("Введите username пользователя, которого хотите удалить из таблицы")
+                    await state.finish()
+                    await ad4.ad1.set()
+            listofadmins.clear()
 
 
-@dp.message_handler(state=delete.deluser, content_types=types.ContentTypes.TEXT)
+@dp.message_handler(state=ad4.ad1, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
     global chatdb
     send = message.text
     ls = send.split("\n", 5)
     username = ls[0]
     username = "'" + username + "'"
-    await delformdb(chatdb, username)
+    await delformdb(chatdb, notifinchatid, username)
     await message.reply(f"Пользователь {username} удалён из таблицы!")
     await state.finish()
+
 
 class edchdb(StatesGroup):
     editdb = State()
 
+
 # Команда вызова команд для редактирвания основной БД чата
-@dp.message_handler(commands=['edit_chat_db'], state="*")
+@dp.message_handler(is_admin=True, commands=['edit_chat_db'], state="*")
 async def edit_command(message: types.Message, state: FSMContext):
     await edchdb.editdb.set()
-    await message.answer("Выберите нужные команды и отправьте в личные сообщения боту:\n1)/edit_username - редактирование username пользователя\n2)/edit_fio - редактирование ФИО\n3)/edit_birthday - редактирование дней рождений\n4)/edit_vacation - редактирование дат отпусков")
+    await message.answer(
+        "Выберите нужные команды и отправьте в личные сообщения боту:\n1)/edit_username - редактирование username пользователя\n2)/edit_fio - редактирование ФИО\n3)/edit_birthday - редактирование дней рождений\n4)/edit_vacation - редактирование дат отпусков")
     await state.finish()
+
 
 class redun(StatesGroup):
     unred = State()
 
+
 # Редактирование username
-async def username_red(chatdb, newusername, username):
+async def username_red(chatdb, newusername,notifinchatid, username):
     async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
         async with aconn.cursor() as acur:
             await acur.execute(f"UPDATE {chatdb} SET username = {newusername} WHERE username = {username}")
+            await acur.execute(f"UPDATE {notifinchatid} SET username = {newusername} WHERE username = {username}")
+
+class ad5(StatesGroup):
+    ad = State()
+    ad1 = State()
+
+@dp.message_handler(commands="edit_username", state="*")
+async def edun(message, state: FSMContext):
+    global adminlist
+    global chatdb
+    global notifinchatid
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad5.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+                if adid in listofadmins:
+                    await message.answer(f'Вы собираетесь изменить username пользвателя из таблицы {chatdb}')
+                    await message.answer("Введите username пользователя, а также устанавливаемый username")
+                    await state.finish()
+                    await ad5.ad1.set()
+            listofadmins.clear()
 
 
-@dp.message_handler(commands=['edit_username'], state="*")
-async def unred_command(message: types.Message, state: FSMContext):
-    await message.answer(f'Вы собираетесь изменить username пользвателя из таблицы {chatdb}')
-    await message.answer("Введите username пользователя, а также устанавливаемый username")
-    await redun.unred.set()
-
-@dp.message_handler(state=redun.unred, content_types=types.ContentTypes.TEXT)
+@dp.message_handler(state=ad5.ad1, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
     global chatdb
     send = message.text
@@ -269,7 +377,7 @@ async def fname_step(message: types.Message, state: FSMContext):
     await message.answer("Устанавливаемый username: " + ls[1])
     newusername = "'" + newusername + "'"
     try:
-        await username_red(chatdb, newusername, username)
+        await username_red(chatdb,newusername,notifinchatid, username)
         await message.reply(f"Username пользователя {username} изменён в таблице {chatdb}")
     except:
         await message.answer("Проверьте данные!")
@@ -281,16 +389,65 @@ async def fio_red(chatdb, newfio, username):
         async with aconn.cursor() as acur:
             await acur.execute(f"UPDATE {chatdb} SET fio = {newfio} WHERE username = {username}")
 
-class redfio(StatesGroup):
-    fiored = State()
+async def deletedb(chatdb):
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"DROP TABLE {chatdb}")
 
-@dp.message_handler(commands=['edit_fio'], state="*")
-async def start_command(message: types.Message, state: FSMContext):
-    await message.answer(f'Вы собираетесь изменить ФИО пользвателя из таблицы {chatdb}')
-    await message.answer("Введите username пользователя, а также ФИО, которое нужно установить")
-    await redfio.fiored.set()
 
-@dp.message_handler(state=redfio.fiored, content_types=types.ContentTypes.TEXT)
+class ad2(StatesGroup):
+    ad = State()
+
+
+@dp.message_handler(commands="delete_db", state="*")
+async def delbd(message, state: FSMContext):
+    global adminlist
+    global chatdb
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad2.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+                if adid in listofadmins:
+                    await deletedb(chatdb)
+                    await message.reply(f"Таблица {chatdb} успешно удалена!")
+            listofadmins.clear()
+    await state.finish()
+
+class ad6(StatesGroup):
+    ad = State()
+    ad1 = State()
+
+
+@dp.message_handler(commands="edit_fio", state="*")
+async def edun(message, state: FSMContext):
+    global adminlist
+    global chatdb
+    global notifinchatid
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad6.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+                if adid in listofadmins:
+                    await message.answer(f'Вы собираетесь изменить ФИО пользвателя из таблицы {chatdb}')
+                    await message.answer("Введите username пользователя, а также ФИО, которое нужно установить")
+                    await state.finish()
+                    await ad6.ad1.set()
+            listofadmins.clear()
+
+
+@dp.message_handler(state=ad6.ad1, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
     global chatdb
     send = message.text
@@ -314,16 +471,34 @@ async def dr_red(chatdb, newbirthday, username):
         async with aconn.cursor() as acur:
             await acur.execute(f"UPDATE {chatdb} SET birthday = {newbirthday} WHERE username = {username}")
 
-class redbd(StatesGroup):
-    bdred = State()
+class ad7(StatesGroup):
+    ad = State()
+    ad1 = State()
 
-@dp.message_handler(commands=['edit_birthday'], state="*")
-async def start_command(message: types.Message, state: FSMContext):
-    await message.answer(f'Вы собираетесь изменить день рождения пользвателя из таблицы {chatdb}')
-    await message.answer("Введите username пользователя, а также устанавливаемую дату дня рождения")
-    await redbd.bdred.set()
 
-@dp.message_handler(state=redbd.bdred, content_types=types.ContentTypes.TEXT)
+@dp.message_handler(commands="edit_birthday", state="*")
+async def edun(message, state: FSMContext):
+    global adminlist
+    global chatdb
+    global notifinchatid
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad7.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+                if adid in listofadmins:
+                    await message.answer(f'Вы собираетесь изменить день рождения пользвателя из таблицы {chatdb}')
+                    await message.answer("Введите username пользователя, а также устанавливаемую дату дня рождения")
+                    await state.finish()
+                    await ad7.ad1.set()
+            listofadmins.clear()
+
+@dp.message_handler(state=ad7.ad1, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
     global chatdb
     send = message.text
@@ -346,24 +521,42 @@ async def vac_red(chatdb, newvacationstart, newvacationend, username):
     try:
         async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
             async with aconn.cursor() as acur:
-                await acur.execute(f"UPDATE {chatdb} SET vacation_start = {newvacationstart} WHERE username = {username}")
+                await acur.execute(
+                    f"UPDATE {chatdb} SET vacation_start = {newvacationstart} WHERE username = {username}")
         async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
             async with aconn.cursor() as acur:
                 await acur.execute(f"UPDATE {chatdb} SET vacation_end = {newvacationend} WHERE username = {username}")
     except:
         pass
 
-class redvac(StatesGroup):
-    vacred = State()
+class ad8(StatesGroup):
+    ad = State()
+    ad1 = State()
 
-@dp.message_handler(commands=['edit_vacation'], state="*")
-async def start_command(message: types.Message, state: FSMContext):
-    await message.answer(f'Вы собираетесь изменить отпуска пользвателя из таблицы {chatdb}')
-    await message.answer("Введите username пользователя, а также устанавливаемые даты начала и конца отпуска")
-    await redvac.vacred.set()
-    await vac_red(message)
+@dp.message_handler(commands="edit_vacation", state="*")
+async def edun(message, state: FSMContext):
+    global adminlist
+    global chatdb
+    global notifinchatid
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad8.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+                if adid in listofadmins:
+                    await message.answer(f'Вы собираетесь изменить отпуска пользвателя из таблицы {chatdb}')
+                    await message.answer(
+                        "Введите username пользователя, а также устанавливаемые даты начала и конца отпуска")
+                    await state.finish()
+                    await ad8.ad1.set()
+            listofadmins.clear()
 
-@dp.message_handler(state=redvac.vacred, content_types=types.ContentTypes.TEXT)
+@dp.message_handler(state=ad8.ad1, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
     global chatdb
     send = message.text
@@ -384,81 +577,217 @@ async def fname_step(message: types.Message, state: FSMContext):
         await message.answer("Проверьте данные!")
     await state.finish()
 
-class shw(StatesGroup):
-    bd = State()
+class ad9(StatesGroup):
+    ad = State()
+    ad1 = State()
 
 @dp.message_handler(commands="show_all_birthday", state="*")
-async def showbd(message, state: FSMContext):
+async def edun(message, state: FSMContext):
+    global adminlist
+    global chatdb
     global notifinchatid
-    notifinchatid = "Notif" + chatdb
-    await message.reply("Вывожу всех пользователей, подписанных на рассылку о ДР")
-    await shw.bd.set()
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad9.ad.set()
     async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
         async with aconn.cursor() as acur:
-            await acur.execute(f"SELECT username FROM {notifinchatid} WHERE birthdaynotif = true")
+            await acur.execute(f"SELECT id FROM {adminlist}")
             rec = await acur.fetchall()
             for row in rec:
-                await message.answer(row[0])
+                listofadmins.append(row[0])
+                if adid in listofadmins:
+                    global notifinchatid
+                    notifinchatid = "Notif" + chatdb
+                    await message.reply("Вывожу всех пользователей, подписанных на рассылку о ДР")
+                    await ad9.ad1.set()
+                    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+                        async with aconn.cursor() as acur:
+                            await acur.execute(f"SELECT username FROM {notifinchatid} WHERE birthdaynotif = true")
+                            rec = await acur.fetchall()
+                            for row in rec:
+                                await message.answer(row[0])
+                    await state.finish()
+            listofadmins.clear()
     await state.finish()
 
-class shw1(StatesGroup):
-    vac = State()
+class ad10(StatesGroup):
+    ad = State()
+    ad1 = State()
 
 @dp.message_handler(commands="show_all_vacation", state="*")
-async def showbd(message, state: FSMContext):
+async def edun(message, state: FSMContext):
+    global adminlist
+    global chatdb
     global notifinchatid
-    notifinchatid = "Notif" + chatdb
-    await message.reply("Вывожу всех пользователей, подписанных на рассылку об отпусках")
-    await shw1.vac.set()
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad10.ad.set()
     async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
         async with aconn.cursor() as acur:
-            await acur.execute(f"SELECT username FROM {notifinchatid} WHERE weekmeeting = true")
-            rec1 = await acur.fetchall()
-            for row in rec1:
-                await message.answer(row[0])
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+                if adid in listofadmins:
+                    global notifinchatid
+                    notifinchatid = "Notif" + chatdb
+                    await message.reply("Вывожу всех пользователей, подписанных на рассылку об отпусках")
+                    await ad10.ad1.set()
+                    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+                        async with aconn.cursor() as acur:
+                            await acur.execute(f"SELECT username FROM {notifinchatid} WHERE weekmeeting = true")
+                            rec1 = await acur.fetchall()
+                            for row in rec1:
+                                await message.answer(row[0])
+                    await state.finish()
+            listofadmins.clear()
     await state.finish()
 
-class shw2(StatesGroup):
-    time = State()
+class ad11(StatesGroup):
+    ad = State()
+    ad1 = State()
 
 @dp.message_handler(commands="show_all_time", state="*")
-async def showbd(message, state: FSMContext):
+async def edun(message, state: FSMContext):
+    global adminlist
+    global chatdb
     global notifinchatid
-    notifinchatid = "Notif" + chatdb
-    await message.reply("Вывожу всех пользователей, подписанных на рассылку о списании времени")
-    await shw2.time.set()
+    global listofadmins
+    adminlist = "admin" + chatdb
+    adid = message.from_user.id
+    await ad11.ad.set()
     async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
         async with aconn.cursor() as acur:
-            await acur.execute(f"SELECT username FROM {notifinchatid} WHERE timemanagment = true")
-            rec2 = await acur.fetchall()
-            for row in rec2:
-                await message.answer(row[0])
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+                if adid in listofadmins:
+                    global notifinchatid
+                    notifinchatid = "Notif" + chatdb
+                    await message.reply("Вывожу всех пользователей, подписанных на рассылку о списании времени")
+                    await ad11.ad1.set()
+                    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+                        async with aconn.cursor() as acur:
+                            await acur.execute(f"SELECT username FROM {notifinchatid} WHERE timemanagment = true")
+                            rec2 = await acur.fetchall()
+                            for row in rec2:
+                                await message.answer(row[0])
+                                await state.finish()
+            listofadmins.clear()
     await state.finish()
 
-class shw3(StatesGroup):
-    meeting = State()
+class ad12(StatesGroup):
+    ad = State()
+    ad1 = State()
 
 @dp.message_handler(commands="show_all_weekmeeting", state="*")
-async def showbd(message, state: FSMContext):
+async def edun(message, state: FSMContext):
+    global adminlist
+    global chatdb
     global notifinchatid
-    notifinchatid = "Notif" + chatdb
-    await message.reply("Вывожу всех пользователей, подписанных на рассылку о совещаниях")
-    await shw3.meeting.set()
+    global listofadmins
+    adminlist = "admin" + chatdb
+    adid = message.from_user.id
+    await ad12.ad.set()
     async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
         async with aconn.cursor() as acur:
-            await acur.execute(f"SELECT username FROM {notifinchatid} WHERE weekmeeting = true")
-            rec3 = await acur.fetchall()
-            for row in rec3:
-                await message.answer(row[0])
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+                if adid in listofadmins:
+                    global notifinchatid
+                    notifinchatid = "Notif" + chatdb
+                    await message.reply("Вывожу всех пользователей, подписанных на рассылку о совещаниях")
+                    await ad12.ad1.set()
+                    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+                        async with aconn.cursor() as acur:
+                            await acur.execute(f"SELECT username FROM {notifinchatid} WHERE weekmeeting = true")
+                            rec3 = await acur.fetchall()
+                            for row in rec3:
+                                await message.answer(row[0])
+                    await state.finish()
+            listofadmins.clear()
     await state.finish()
 
-async def force_sub_bd(username):
-    try:
-        async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
-            async with aconn.cursor() as acur:
-                await acur.execute(f"UPDATE {notifinchatid} SET birthdaynotif = true WHERE username = {username}")
-    except:
-        pass
+async def deletadmedb(adminlist):
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"DROP TABLE {adminlist}")
+
+
+class ad13(StatesGroup):
+    ad = State()
+
+
+@dp.message_handler(commands="delete_admin_db", state="*")
+async def delbd(message, state: FSMContext):
+    global adminlist
+    global chatdb
+    global listofadmins
+    adminlist = "admin" + chatdb
+    adid = message.from_user.id
+    await ad2.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+                if adid in listofadmins:
+                    await deletadmedb(adminlist)
+                    await message.reply(f"Таблица {adminlist} успешно удалена!")
+            listofadmins.clear()
+    await state.finish()
+
+async def delfromadmindb(adminlist, id):
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"DELETE FROM {adminlist} WHERE id = {id}")
+            await listofadmins.remove(id)
+
+
+class ad14(StatesGroup):
+    ad = State()
+    ad1 = State()
+
+@dp.message_handler(commands="delete_from_admin_db", state="*")
+async def delfdb(message, state: FSMContext):
+    global adminlist
+    global chatdb
+    global notifinchatid
+    global listofadmins
+    adminlist = "admin" + chatdb
+    adid = message.from_user.id
+    await ad14.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+                print(listofadmins)
+                if adid in listofadmins:
+                    await message.reply(text=f'Вы удаляете данные из таблицы {adminlist}')
+                    await message.answer("Введите id админа, которого хотите удалить из таблицы")
+                    await state.finish()
+                    await ad14.ad1.set()
+                else:
+                    await message.reply("Проверьте ввод!")
+            listofadmins.clear()
+@dp.message_handler(state=ad14.ad1, content_types=types.ContentTypes.TEXT)
+async def fname_step(message: types.Message, state: FSMContext):
+    global adminlist
+    send = message.text
+    ls = send.split("\n", 5)
+    id = ls[0]
+    await delfromadmindb(adminlist, id)
+    await message.reply(f"Пользователь {id} удалён из таблицы {adminlist}!")
+    await state.finish()
+
 
 # @dp.message_handler(commands=["edit_notif_settings"])
 # def menu(message):
