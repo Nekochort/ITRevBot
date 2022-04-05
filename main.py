@@ -12,7 +12,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.types import ReplyKeyboardRemove, \
     ReplyKeyboardMarkup, KeyboardButton, \
     InlineKeyboardMarkup, InlineKeyboardButton, message
-import telebot
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from config import TOKEN, DB_URI
 
@@ -38,6 +38,15 @@ adminlist = "adminlist"
 
 listofadmins = []
 
+notiflist = []
+
+taglist = []
+
+scheduler = AsyncIOScheduler()
+
+async def removeshed(id):
+    scheduler.remove_job(id)
+
 class MyFilter(BoundFilter):
     key = 'is_admin'
 
@@ -59,8 +68,11 @@ class addnotifdb(StatesGroup):
 
 @dp.message_handler(commands=["add_notifdb"], state="*")
 async def start_command(message: types.Message, state: FSMContext):
-    global notifinchatid
+    global notifinchatid, everyday, everyweek, everymounth
     notifinchatid = "Notif" + chatdb
+    everyday = "EveryDay" + chatdb
+    everyweek = "EveryWeek" + chatdb
+    everymounth = "EveryMounth" + chatdb
     timemanagment = birthdaynotif = weekmeeting = vacationnotif = True
     await addnotifdb.addnotdb.set()
     async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
@@ -71,11 +83,41 @@ async def start_command(message: types.Message, state: FSMContext):
                 await acur.execute(f"INSERT INTO {notifinchatid}(id, username) SELECT id, username FROM {chatdb}")
                 await acur.execute(
                     f"UPDATE {notifinchatid} SET timemanagment = true,birthdaynotif = true, weekmeeting = true, vacationnotif = true  ")
+                await acur.execute(
+                    f"CREATE TABLE IF NOT EXISTS {everyday} (tag VARCHAR(60) UNIQUE, text VARCHAR(60) UNIQUE, hours Bigint, minutes Bigint)")
+                await acur.execute(
+                    f"CREATE TABLE IF NOT EXISTS {everyweek} (tag VARCHAR(60) UNIQUE, text VARCHAR(60) UNIQUE, time VARCHAR(60), weekday Bigint)")
+                await acur.execute(
+                    f"CREATE TABLE IF NOT EXISTS {everymounth} (tag VARCHAR(60) UNIQUE, text VARCHAR(60) UNIQUE, time VARCHAR(60), mounthday Bigint)")
             except:
-                pass
+                await message.answer(f"ХЬЮСТОН, У НАС ПРОБЛЕМЫ. Я ДОЛБАЁБ!")
         await message.answer(f"Таблица уведомлений для {chatdb} успешно создана!")
     await state.finish()
 
+
+async def addc(mes,notifinchatid):
+    test = "test"
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            try:
+                await acur.execute(
+                    f"ALTER TABLE {notifinchatid} ADD COLUMN {test} BOOLEAN")
+                await acur.execute(
+                    f"UPDATE {notifinchatid} SET {test} = true")
+            except:
+                await bot.send_message(mes, "Та погоди ты!")
+
+
+class addcol(StatesGroup):
+    add = State()
+
+@dp.message_handler(is_admin=True, commands='add_col', state="*")
+async def process_add_db_command(message: types.Message, state: FSMContext):
+    global notifinchatid
+    mes = message.chat.id
+    await addcol.add.set()
+    await addc(mes,notifinchatid)
+    await state.finish()
 
 
 async def adminreg(mes,adminlist, userid):
@@ -234,11 +276,20 @@ async def delbd(message, state: FSMContext):
     await state.finish()
 
 
-async def deletnotifdb(chatdb):
+async def deletnotifdb(chatdb, mes):
     notifinchatid = "Notif" + chatdb
+    everyday = "EveryDay" + chatdb
+    everyweek = "EveryWeek" + chatdb
+    everymounth = "EveryMounth" + chatdb
     async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
         async with aconn.cursor() as acur:
-            await acur.execute(f"DROP TABLE {notifinchatid}")
+            try:
+                await acur.execute(f"DROP TABLE {notifinchatid}")
+                await acur.execute(f"DROP TABLE {everyday}")
+                await acur.execute(f"DROP TABLE {everyweek}")
+                await acur.execute(f"DROP TABLE {everymounth}")
+            except:
+                await bot.send_message(mes, "Хьюстон, у нас проблмы...Проверь данные")
 
 
 class ad3(StatesGroup):
@@ -250,6 +301,7 @@ async def delbd(message, state: FSMContext):
     global adminlist
     global chatdb
     global listofadmins
+    mes = message.chat.id
     adid = message.from_user.id
     adminlist = "admin" + chatdb
     await ad3.ad.set()
@@ -261,7 +313,7 @@ async def delbd(message, state: FSMContext):
                 listofadmins.append(row[0])
                 if adid in listofadmins:
                     notifinchatid = "Notif" + chatdb
-                    await deletnotifdb(chatdb)
+                    await deletnotifdb(chatdb, mes)
                     await message.reply(f"Таблица {notifinchatid} успешно удалена!")
             listofadmins.clear()
     await state.finish()
@@ -325,11 +377,6 @@ async def edit_command(message: types.Message, state: FSMContext):
     await message.answer(
         "Выберите нужные команды и отправьте в личные сообщения боту:\n1)/edit_username - редактирование username пользователя\n2)/edit_fio - редактирование ФИО\n3)/edit_birthday - редактирование дней рождений\n4)/edit_vacation - редактирование дат отпусков")
     await state.finish()
-
-
-class redun(StatesGroup):
-    unred = State()
-
 
 # Редактирование username
 async def username_red(chatdb, newusername,notifinchatid, username):
@@ -788,6 +835,312 @@ async def fname_step(message: types.Message, state: FSMContext):
     await message.reply(f"Пользователь {id} удалён из таблицы {adminlist}!")
     await state.finish()
 
+
+############### new every day notif ##################
+
+class nedm(StatesGroup):
+    times = State()
+    times1 = ''
+    theme = State()
+    theme1 = ''
+    tag = State()
+    tag1 = ''
+    name = State()
+    name1 = ''
+
+
+@dp.message_handler(commands="nedm", state="*")
+async def name_step(message: types.Message, state: FSMContext):
+    await message.answer(text='Отправьте время, в которое будет отправляться данное сообщение: ')
+    await nedm.times.set()
+
+@dp.message_handler(state=nedm.times, content_types=types.ContentTypes.TEXT)
+async def fname_step(message: types.Message, state: FSMContext):
+    if not any(map(str.isdigit, message.text)) or len(message.text) < 4 or ':' not in message.text:
+        await message.reply("Пожалуйста напишите время в требуемом формате")
+        return
+    nedm.times1 = message.text
+    await message.answer(text='Отправьте текст для ежедневного уведомления: ')
+    await nedm.theme.set()
+
+@dp.message_handler(state=nedm.theme, content_types=types.ContentTypes.TEXT)
+async def age_step(message: types.Message, state: FSMContext):
+    nedm.theme1 = message.text
+    await message.answer(text='Введите тэг напоминания')
+    await nedm.tag.set()
+
+@dp.message_handler(state=nedm.tag, content_types=types.ContentTypes.TEXT)
+async def age_step(message: types.Message, state: FSMContext):
+    nedm.tag1 = message.text
+    taglist.append(nedm.tag1)
+    await message.answer(text='Введите описание напоминания')
+    await nedm.name.set()
+
+@dp.message_handler(state=nedm.name, content_types=types.ContentTypes.TEXT)
+async def fname_step(message: types.Message, state: FSMContext):
+    global everyday
+    nedm.name1 = message.text
+    tl = nedm.times1.split(':')
+    tag = "'" + nedm.tag1 +"'"
+    text = "'" + nedm.theme1 + "'"
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(
+                f"INSERT INTO {everyday} (tag,text, hours, minutes) VALUES ({tag}, {text}, {tl[0]}, {tl[1]})")
+    async def job():
+        await bot.send_message(message.from_user.id, nedm.theme1)
+    scheduler.add_job(job, 'cron', hour=int(tl[0]), minute=int(tl[1]), id=nedm.tag1, name=nedm.name1)
+    notiflist.append(nedm.tag1 + ' - ' + nedm.name1)
+    await message.answer("Напоминание установлено.")
+    print(nedm.times1, ' ', nedm.theme1, ' ', nedm.tag1)
+    print(notiflist)
+    await state.finish()
+
+
+############### delete everyday notif ########
+class delnots(StatesGroup):
+    id = State()
+    id1 = ''
+
+
+@dp.message_handler(commands="remeverydaysch", state="*")
+async def name_step(message: types.Message, state: FSMContext):
+    await message.answer("Выберите какое напоминание хотите удалить и введите его тэг: \n")
+    m = ''
+    for i in notiflist:
+        m += (i+'\n')
+    await message.answer(m)
+    print(notiflist)
+    await delnots.id.set()
+
+@dp.message_handler(state=delnots.id, content_types=types.ContentTypes.TEXT)
+async def fname_step(message: types.Message, state: FSMContext):
+    global everyday
+    delnots.id1 = message.text
+    if delnots.id1 not in taglist:
+        await message.reply("Пожалуйста, проверьте список напоминаний и введите тэг ещё раз")
+        return
+    await removeshed(delnots.id1)
+    for i in notiflist:
+        if delnots.id1 in i.split(' - '):
+            notiflist.remove(i)
+            # taglist.remove(i)
+            tag = "'" + delnots.id1 + "'"
+            async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+                async with aconn.cursor() as acur:
+                    await acur.execute(
+                        f"DELETE FROM {everyday} WHERE tag = {tag}")
+    await message.reply("Напоминание успешно удалено.")
+    print(notiflist)
+    await state.finish()
+
+################### new every week notif #################
+class delnots1(StatesGroup):
+    id = State()
+    id1 = ''
+
+
+class newm(StatesGroup):
+    date = State()
+    date1 = ''
+    time1 = ''
+    theme = State()
+    theme1 = ''
+    tag = State()
+    tag1 = ''
+    name = State()
+    name1 = ''
+
+
+@dp.message_handler(commands="newm", state="*")
+async def name_step(message: types.Message, state: FSMContext):
+    await message.answer(text='Отправьте день недели (0-6, понедельник-воскресенье соответствено) и время, в которое будет отправляться данное напоминание: \n'
+                              'Пример: \n2\n18:00\n\n'
+                              'Расшифровка: напоминание будет отправляться каждую среду в 18:00')
+    await newm.date.set()
+
+@dp.message_handler(state=newm.date, content_types=types.ContentTypes.TEXT)
+async def fname_step(message: types.Message, state: FSMContext):
+    dt = message.text.split('\n')
+    if int(dt[0]) < 0 or int(dt[0]) > 6 or not any(map(str.isdigit, dt[1])) or len(dt[1]) < 4 or ':' not in dt[1] or len(dt)<2:
+        await message.reply("Пожалуйста напишите дату и время в требуемом формате")
+        return
+    newm.date1 = dt[0]
+    newm.time1 = dt[1]
+    await message.answer(text='Отправьте текст для еженедельного напоминания: ')
+    await newm.theme.set()
+
+@dp.message_handler(state=newm.theme, content_types=types.ContentTypes.TEXT)
+async def age_step(message: types.Message, state: FSMContext):
+    newm.theme1 = message.text
+    await message.answer(text='Введите тэг напоминания')
+    await newm.tag.set()
+
+@dp.message_handler(state=newm.tag, content_types=types.ContentTypes.TEXT)
+async def age_step(message: types.Message, state: FSMContext):
+    newm.tag1 = message.text
+    taglist.append(newm.tag1)
+    await message.answer(text='Введите описание напоминания')
+    await newm.name.set()
+
+@dp.message_handler(state=newm.name, content_types=types.ContentTypes.TEXT)
+async def fname_step(message: types.Message, state: FSMContext):
+    newm.name1 = message.text
+    tl = newm.time1.split(':')
+    tag = "'" + newm.tag1 + "'"
+    text = "'" + newm.theme1 + "'"
+    date = "'" + newm.date1 + "'"
+    time = "'" + newm.time1 + "'"
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(
+                f"INSERT INTO {everyweek} (tag,text, time, weekday) VALUES ({tag}, {text}, {time}, {date})")
+    async def job():
+        await bot.send_message(message.from_user.id, newm.theme1)
+    scheduler.add_job(job, 'cron', day_of_week=int(newm.date1),  hour=int(tl[0]), minute=int(tl[1]), id=newm.tag1, name=newm.name1)
+    notiflist.append(newm.tag1 + ' - ' + newm.name1)
+    await message.answer("Напоминание установлено.")
+    print(newm.date1, ' ', newm.time1, ' ', newm.theme1, ' ', newm.tag1)
+    print(notiflist)
+    await state.finish()
+
+@dp.message_handler(commands="remeveryweeksch", state="*")
+async def name_step(message: types.Message, state: FSMContext):
+    await message.answer("Выберите какое напоминание хотите удалить и введите его тэг: \n")
+    m = ''
+    for i in notiflist:
+        m += (i+'\n')
+    await message.answer(m)
+    print(notiflist)
+    await delnots1.id.set()
+
+@dp.message_handler(state=delnots1.id, content_types=types.ContentTypes.TEXT)
+async def fname_step(message: types.Message, state: FSMContext):
+    global everyweek
+    delnots1.id1 = message.text
+    if delnots1.id1 not in taglist:
+        await message.reply("Пожалуйста, проверьте список напоминаний и введите тэг ещё раз")
+        return
+    await removeshed(delnots1.id1)
+    for i in notiflist:
+        if delnots1.id1 in i.split(' - '):
+            notiflist.remove(i)
+            # taglist.remove(i)
+            tag = "'" + delnots1.id1 + "'"
+            print(tag)
+            async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+                async with aconn.cursor() as acur:
+                    await acur.execute(
+                        f"DELETE FROM {everyweek} WHERE tag = {tag}")
+    await message.reply("Напоминание успешно удалено.")
+    print(notiflist)
+    await state.finish()
+
+
+############## new every mon notif ################
+class delnots2(StatesGroup):
+    id = State()
+    id1 = ''
+
+
+class nemm(StatesGroup):
+    date = State()
+    date1 = ''
+    time1 = ''
+    theme = State()
+    theme1 = ''
+    tag = State()
+    tag1 = ''
+    name = State()
+    name1 = ''
+
+
+@dp.message_handler(commands="nemm", state="*")
+async def name_step(message: types.Message, state: FSMContext):
+    await message.answer(text='Отправьте день месяца и время, в которое будет отправляться данное напоминание: \n'
+                              'Пример: \n28\n18:00\n\n'
+                              'Расшифровка: напоминание будет отправляться каждый месяц 28 числа в 18:00')
+    await nemm.date.set()
+
+@dp.message_handler(state=nemm.date, content_types=types.ContentTypes.TEXT)
+async def fname_step(message: types.Message, state: FSMContext):
+    dt = message.text.split('\n')
+    if int(dt[0]) < 1 or int(dt[0]) > 31 or not any(map(str.isdigit, dt[1])) or len(dt[1]) < 4 or ':' not in dt[1] or len(dt)<2:
+        await message.reply("Пожалуйста, напишите дату и время в требуемом формате")
+        return
+    nemm.date1 = dt[0]
+    nemm.time1 = dt[1]
+    await message.answer(text='Отправьте текст для ежемесячного напоминания: ')
+    await nemm.theme.set()
+
+@dp.message_handler(state=nemm.theme, content_types=types.ContentTypes.TEXT)
+async def age_step(message: types.Message, state: FSMContext):
+    nemm.theme1 = message.text
+    await message.answer(text='Введите тэг напоминания')
+    await nemm.tag.set()
+
+@dp.message_handler(state=nemm.tag, content_types=types.ContentTypes.TEXT)
+async def age_step(message: types.Message, state: FSMContext):
+    nemm.tag1 = message.text
+    taglist.append(nemm.tag1)
+    await message.answer(text='Введите описание напоминания')
+    await nemm.name.set()
+
+@dp.message_handler(state=nemm.name, content_types=types.ContentTypes.TEXT)
+async def fname_step(message: types.Message, state: FSMContext):
+    global everymounth
+    nemm.name1 = message.text
+    tl = nemm.time1.split(':')
+    tag = "'" + nemm.tag1 + "'"
+    text = "'" + nemm.theme1 + "'"
+    date = "'" + nemm.date1 + "'"
+    time = "'" + nemm.time1 + "'"
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(
+                f"INSERT INTO {everymounth} (tag,text, time, mounthday) VALUES ({tag}, {text}, {time}, {date})")
+    async def job():
+        await bot.send_message(message.from_user.id, nemm.theme1)
+    scheduler.add_job(job, 'cron', day=int(nemm.date1),  hour=int(tl[0]), minute=int(tl[1]), id=nemm.tag1, name=nemm.name1)
+    notiflist.append(nemm.tag1 + ' - ' + nemm.name1)
+    await message.answer("Напоминание установлено.")
+    print(nemm.date1, ' ', nemm.time1, ' ', nemm.theme1, ' ', nemm.tag1)
+    print(notiflist)
+    await state.finish()
+
+@dp.message_handler(commands="remeverymounthsch", state="*")
+async def name_step(message: types.Message, state: FSMContext):
+    await message.answer("Выберите какое напоминание хотите удалить и введите его тэг: \n")
+    m = ''
+    for i in notiflist:
+        m += (i+'\n')
+    await message.answer(m)
+    print(notiflist)
+    await delnots2.id.set()
+
+@dp.message_handler(state=delnots2.id, content_types=types.ContentTypes.TEXT)
+async def fname_step(message: types.Message, state: FSMContext):
+    global everymounth
+    delnots2.id1 = message.text
+    if delnots2.id1 not in taglist:
+        await message.reply("Пожалуйста, проверьте список напоминаний и введите тэг ещё раз")
+        return
+    await removeshed(delnots2.id1)
+    for i in notiflist:
+        if delnots2.id1 in i.split(' - '):
+            notiflist.remove(i)
+            # taglist.remove(i)
+            tag = "'" + delnots2.id1 + "'"
+            print(tag)
+            async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+                async with aconn.cursor() as acur:
+                    await acur.execute(
+                        f"DELETE FROM {everymounth} WHERE tag = {tag}")
+    await message.reply("Напоминание успешно удалено.")
+    print(notiflist)
+    await state.finish()
+
+scheduler.start()
 
 # @dp.message_handler(commands=["edit_notif_settings"])
 # def menu(message):
