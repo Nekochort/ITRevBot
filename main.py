@@ -71,7 +71,34 @@ async def start_com(message: types.Message):
 
 @dp.message_handler(commands=["help"])
 async def help_com(message: types.Message):
-    await message.reply("Тута будут комы")
+    await message.reply("==========Команды для работы с БД==========\n"
+                        "/add_notifdb - создание таблиц уведомлений группы\n"
+                        "/send_my_id - отправка ID пользователя админам\n"
+                        "/reg_admin - регистрация админов\n"
+                        "/add_to_db - добавление пользователя в таблицу\n"
+                        "/delete_db - удалние таблицы чата\n"
+                        "/delete_notif_db - удаление таблиц уведомлений\n"
+                        "/delete_from_db - удаление пользователя из таблицы\n"
+                        "/edit_chat_db - вызов возможных команд для редактирования таблицы\n"
+                        "/start_birthday - настройка рассылки напоминаний о ДР\n"
+                        "/remove_birthday_notif - удаление уведомления о ДР\n"
+                        "/start_vacation - настройка рассылки напоминаний об отпусках\n"
+                        "/remove_vacation_notif - удаление уведомления об отпусках\n"
+                        "/delete_admin_db - удаление таблицы админов чата\n"
+                        "/delete_from_admin_db - удаление админа из таблицы\n"
+                        "==========Команды для работы с уведомлениями==========\n"
+                        "/add_everyday_notif - настройка ежедневных уведомлений\n"
+                        "/remeverydaysch - удаление ежедневного уведомления\n"
+                        "/add_everyweek_notif - настройка еженедельных уведомлений\n"
+                        "/show_all_birthday - вывод всех пользователей, подписанных на уведомления о ДР\n"
+                        "/show_all_vacation - вывод всех пользователей, подписанных на уведомления об отпусках\n"
+                        "/remeveryweeksch - удаление ежедневных уведомлений\n"
+                        "/add_everymonth_notif - настройка ежемесячных уведомлений\n"
+                        "/remeverymounthsch - удаление ежемесячных уведомлений\n"
+                        "/edit_notif_settings - настройка подписки и отписки на уведомления о ДР и отпусках\n"
+                        "==========Команды для работы с опросами==========\n"
+                        "/vote - вывод всех команд для взаимодействия с опросами\n"
+                        "/remove_vote - удаление опроса")
 
 # whw - переменная,имеющая значение +неделю, от текущей даты
 whw = arrow.utcnow().shift(weeks=1)
@@ -84,7 +111,6 @@ async def start_command(message: types.Message):
     user_id = message.from_user.id
     usrname = message.from_user.username
     await message.reply("Спасибо! Данные отправлены админам!")
-    print(listofadmins)
     for i in listofadmins:
         await bot.send_message(i, f"ID пользователя @{usrname}: {user_id}")
 
@@ -151,7 +177,6 @@ async def process_add_db_command(message: types.Message, state: FSMContext):
     chatlist.append(message.chat.id)
     await adreg.regad.set()
     await adminreg(mes,adminlist, userid)
-    print(listofadmins)
     await state.finish()
 
 
@@ -185,12 +210,12 @@ async def showbd(message, state: FSMContext):
             rec = await acur.fetchall()
             for row in rec:
                 listofadmins.append(row[0])
-                if adid in listofadmins:
-                    await message.reply(text=f'Вы добавляете пользователя в таблицу {chatdb}')
-                    await message.answer(
+            if adid in listofadmins:
+                await message.reply(text=f'Вы добавляете пользователя в таблицу {chatdb}')
+                await message.answer(
                         "Введите данные username, id, ФИО, ДР и отпуска пользователя в таком формате:\n@nekochort\n466280885\nШорников Никита Сергеевич\n27.10\n26.12.2021\n28.01.2022")
-                    await state.finish()
-                    await ad1.ad1.set()
+                await state.finish()
+                await ad1.ad1.set()
             listofadmins.clear()
 
 
@@ -237,14 +262,13 @@ async def process_add_db_command(message: types.Message, state: FSMContext):
     global chatdb
     global listofadmins
     global chatlist
+    chatid = message,
     adid = message.from_user.id
     chatdb = message.chat.id
     chatdb = str(chatdb)
     chatdb = chatdb.replace("-", "")
     chatdb = "group" + chatdb
     chatlist.append(message.chat.id)
-    print(message.chat.id)
-    print(chatlist)
     await addchatdb.adddb.set()
     await adddb(chatdb)
     await message.reply(f"Таблица {chatdb} успешно создана! Прошу админа перейти в ЛС!")
@@ -275,10 +299,10 @@ async def delbd(message, state: FSMContext):
             rec = await acur.fetchall()
             for row in rec:
                 listofadmins.append(row[0])
-                if adid in listofadmins:
-                    await deletedb(chatdb)
-                    await message.reply(f"Таблица {chatdb} успешно удалена!")
-            listofadmins.clear()
+            if adid in listofadmins:
+                await deletedb(chatdb)
+                await message.reply(f"Таблица {chatdb} успешно удалена!")
+        listofadmins.clear()
     await state.finish()
 
 
@@ -315,11 +339,11 @@ async def delbd(message, state: FSMContext):
             rec = await acur.fetchall()
             for row in rec:
                 listofadmins.append(row[0])
-                if adid in listofadmins:
-                    notifinchatid = "Notif" + chatdb
-                    await deletnotifdb(chatdb, mes)
-                    await message.reply(f"Таблица {notifinchatid} успешно удалена!")
-            listofadmins.clear()
+            if adid in listofadmins:
+                notifinchatid = "Notif" + chatdb
+                await deletnotifdb(chatdb, mes)
+                await message.reply(f"Таблица {notifinchatid} успешно удалена!")
+        listofadmins.clear()
     await state.finish()
 
 
@@ -350,12 +374,12 @@ async def delfdb(message, state: FSMContext):
             rec = await acur.fetchall()
             for row in rec:
                 listofadmins.append(row[0])
-                if adid in listofadmins:
-                    await message.reply(text=f'Вы удаляете данные из таблицы {chatdb}')
-                    await message.answer("Введите username пользователя, которого хотите удалить из таблицы")
-                    await state.finish()
-                    await ad4.ad1.set()
-            listofadmins.clear()
+            if adid in listofadmins:
+                await message.reply(text=f'Вы удаляете данные из таблицы {chatdb}')
+                await message.answer("Введите username пользователя, которого хотите удалить из таблицы")
+                await state.finish()
+                await ad4.ad1.set()
+        listofadmins.clear()
 
 @dp.message_handler(state=ad4.ad1, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
@@ -406,12 +430,12 @@ async def edun(message, state: FSMContext):
             rec = await acur.fetchall()
             for row in rec:
                 listofadmins.append(row[0])
-                if adid in listofadmins:
-                    await message.reply(f'Вы собираетесь изменить username пользвателя из таблицы {chatdb}')
-                    await message.answer("Введите username пользователя, а также устанавливаемый username")
-                    await state.finish()
-                    await ad5.ad1.set()
-            listofadmins.clear()
+            if adid in listofadmins:
+                await message.reply(f'Вы собираетесь изменить username пользвателя из таблицы {chatdb}')
+                await message.answer("Введите username пользователя, а также устанавливаемый username")
+                await state.finish()
+                await ad5.ad1.set()
+        listofadmins.clear()
 
 
 @dp.message_handler(state=ad5.ad1, content_types=types.ContentTypes.TEXT)
@@ -462,10 +486,10 @@ async def delbd(message, state: FSMContext):
             rec = await acur.fetchall()
             for row in rec:
                 listofadmins.append(row[0])
-                if adid in listofadmins:
-                    await deletedb(chatdb)
-                    await message.reply(f"Таблица {chatdb} успешно удалена!")
-            listofadmins.clear()
+            if adid in listofadmins:
+                await deletedb(chatdb)
+                await message.reply(f"Таблица {chatdb} успешно удалена!")
+        listofadmins.clear()
     await state.finish()
 
 class ad6(StatesGroup):
@@ -488,12 +512,12 @@ async def edun(message, state: FSMContext):
             rec = await acur.fetchall()
             for row in rec:
                 listofadmins.append(row[0])
-                if adid in listofadmins:
-                    await message.reply(f'Вы собираетесь изменить ФИО пользвателя из таблицы {chatdb}')
-                    await message.answer("Введите username пользователя, а также ФИО, которое нужно установить")
-                    await state.finish()
-                    await ad6.ad1.set()
-            listofadmins.clear()
+            if adid in listofadmins:
+                await message.reply(f'Вы собираетесь изменить ФИО пользвателя из таблицы {chatdb}')
+                await message.answer("Введите username пользователя, а также ФИО, которое нужно установить")
+                await state.finish()
+                await ad6.ad1.set()
+        listofadmins.clear()
 
 
 @dp.message_handler(state=ad6.ad1, content_types=types.ContentTypes.TEXT)
@@ -540,12 +564,12 @@ async def edun(message, state: FSMContext):
             rec = await acur.fetchall()
             for row in rec:
                 listofadmins.append(row[0])
-                if adid in listofadmins:
-                    await message.reply(f'Вы собираетесь изменить день рождения пользвателя из таблицы {chatdb}')
-                    await message.answer("Введите username пользователя, а также устанавливаемую дату дня рождения")
-                    await state.finish()
-                    await ad7.ad1.set()
-            listofadmins.clear()
+            if adid in listofadmins:
+                await message.reply(f'Вы собираетесь изменить день рождения пользвателя из таблицы {chatdb}')
+                await message.answer("Введите username пользователя, а также устанавливаемую дату дня рождения")
+                await state.finish()
+                await ad7.ad1.set()
+        listofadmins.clear()
 
 @dp.message_handler(state=ad7.ad1, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
@@ -597,13 +621,13 @@ async def edun(message, state: FSMContext):
             rec = await acur.fetchall()
             for row in rec:
                 listofadmins.append(row[0])
-                if adid in listofadmins:
-                    await message.reply(f'Вы собираетесь изменить отпуска пользвателя из таблицы {chatdb}')
-                    await message.answer(
+            if adid in listofadmins:
+                await message.reply(f'Вы собираетесь изменить отпуска пользвателя из таблицы {chatdb}')
+                await message.answer(
                         "Введите username пользователя, а также устанавливаемые даты начала и конца отпуска")
-                    await state.finish()
-                    await ad8.ad1.set()
-            listofadmins.clear()
+                await state.finish()
+                await ad8.ad1.set()
+        listofadmins.clear()
 
 @dp.message_handler(state=ad8.ad1, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
@@ -645,19 +669,19 @@ async def edun(message, state: FSMContext):
             rec = await acur.fetchall()
             for row in rec:
                 listofadmins.append(row[0])
-                if adid in listofadmins:
-                    global notifinchatid
-                    notifinchatid = "Notif" + chatdb
-                    await message.reply("Вывожу всех пользователей, подписанных на рассылку о ДР")
-                    await ad9.ad1.set()
-                    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
-                        async with aconn.cursor() as acur:
-                            await acur.execute(f"SELECT username FROM {notifinchatid} WHERE birthdaynotif = true")
-                            rec = await acur.fetchall()
-                            for row in rec:
-                                await message.answer(row[0])
-                    await state.finish()
-            listofadmins.clear()
+            if adid in listofadmins:
+                global notifinchatid
+                notifinchatid = "Notif" + chatdb
+                await message.reply("Вывожу всех пользователей, подписанных на рассылку о ДР")
+                await ad9.ad1.set()
+                async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+                    async with aconn.cursor() as acur:
+                        await acur.execute(f"SELECT username FROM {notifinchatid} WHERE birthdaynotif = true")
+                        rec = await acur.fetchall()
+                        for row in rec:
+                            await message.answer(row[0])
+                await state.finish()
+        listofadmins.clear()
     await state.finish()
 
 class bday(StatesGroup):
@@ -672,8 +696,20 @@ class bday(StatesGroup):
 
 @dp.message_handler(commands="start_birthday", state="*")
 async def name_step(message: types.Message, state: FSMContext):
-    await message.reply(text='Отправьте время, в которое будет отправляться данное сообщение: ')
-    await bday.times.set()
+    global adminlist
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad1.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+            if adid in listofadmins:
+                await message.reply(text='Отправьте время, в которое будет отправляться данное сообщение: ')
+                await bday.times.set()
 
 @dp.message_handler(state=bday.times, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
@@ -708,7 +744,7 @@ async def fname_step(message: types.Message, state: FSMContext):
             await acur.execute(
                 f"INSERT INTO {everyday} (tag, hours, minutes) VALUES ({tag1}, {tl[0]}, {tl[1]})")
             await acur.execute(
-                f"ALTER TABLE {notifinchatid} ADD COLUMN {tag} BOOLEAN")
+                f"ALTER TABLE {notifinchatid} ADD COLUMN {tag} BOOLEAN")#ОПАНА
             await acur.execute(
                 f"UPDATE {notifinchatid} SET {tag} = true")
     async def job():
@@ -728,8 +764,6 @@ async def fname_step(message: types.Message, state: FSMContext):
     scheduler.add_job(job, 'cron', hour=int(tl[0]), minute=int(tl[1]), id=bday.tag1, name=bday.name1)
     notiflist.append(bday.tag1 + ' - ' + bday.name1)
     await message.answer("Напоминание установлено.")
-    print(nedm.times1, ' ', nedm.theme1, ' ', nedm.tag1)
-    print(notiflist)
     await state.finish()
 
 class delbirthday(StatesGroup):
@@ -739,13 +773,24 @@ class delbirthday(StatesGroup):
 
 @dp.message_handler(commands="remove_birthday_notif", state="*")
 async def name_step(message: types.Message, state: FSMContext):
-    await message.answer("Выберите какое напоминание хотите удалить и введите его тэг: \n")
-    m = ''
-    for i in notiflist:
-        m += (i+'\n')
-    await message.answer(m)
-    print(notiflist)
-    await delbirthday.id.set()
+    global adminlist
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad1.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+            if adid in listofadmins:
+                await message.answer("Выберите какое напоминание хотите удалить и введите его тэг: \n")
+                m = ''
+                for i in notiflist:
+                    m += (i+'\n')
+                await message.answer(m)
+                await delbirthday.id.set()
 
 @dp.message_handler(state=delbirthday.id, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
@@ -768,7 +813,6 @@ async def fname_step(message: types.Message, state: FSMContext):
                     await acur.execute(
                         f"ALTER TABLE {notifinchatid} DROP COLUMN {tag1} CASCADE")
     await message.reply("Напоминание успешно удалено.")
-    print(notiflist)
     await state.finish()
 
 
@@ -791,19 +835,19 @@ async def edun(message, state: FSMContext):
             rec = await acur.fetchall()
             for row in rec:
                 listofadmins.append(row[0])
-                if adid in listofadmins:
-                    global notifinchatid
-                    notifinchatid = "Notif" + chatdb
-                    await message.reply("Вывожу всех пользователей, подписанных на рассылку об отпусках")
-                    await ad10.ad1.set()
-                    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
-                        async with aconn.cursor() as acur:
-                            await acur.execute(f"SELECT username FROM {notifinchatid} WHERE weekmeeting = true")
-                            rec1 = await acur.fetchall()
-                            for row in rec1:
-                                await message.answer(row[0])
-                    await state.finish()
-            listofadmins.clear()
+            if adid in listofadmins:
+                global notifinchatid
+                notifinchatid = "Notif" + chatdb
+                await message.reply("Вывожу всех пользователей, подписанных на рассылку об отпусках")
+                await ad10.ad1.set()
+                async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+                    async with aconn.cursor() as acur:
+                        await acur.execute(f"SELECT username FROM {notifinchatid} WHERE weekmeeting = true")
+                        rec1 = await acur.fetchall()
+                        for row in rec1:
+                            await message.answer(row[0])
+                await state.finish()
+        listofadmins.clear()
     await state.finish()
 
 class ad11(StatesGroup):
@@ -822,8 +866,20 @@ class vac(StatesGroup):
 
 @dp.message_handler(commands="start_vacation", state="*")
 async def name_step(message: types.Message, state: FSMContext):
-    await message.answer(text='Отправьте время, в которое будет отправляться данное сообщение: ')
-    await vac.times.set()
+    global adminlist
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad1.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+            if adid in listofadmins:
+                await message.answer(text='Отправьте время, в которое будет отправляться данное сообщение: ')
+                await vac.times.set()
 
 @dp.message_handler(state=vac.times, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
@@ -886,8 +942,6 @@ async def fname_step(message: types.Message, state: FSMContext):
     scheduler.add_job(job, 'cron', hour=int(tl[0]), minute=int(tl[1]), id=vac.tag1, name=vac.name1)
     notiflist.append(vac.tag1 + ' - ' + vac.name1)
     await message.reply("Напоминание установлено.")
-    print(vac.times1, ' ', vac.theme1, ' ', vac.tag1)
-    print(notiflist)
     await state.finish()
 
 class delvac(StatesGroup):
@@ -897,13 +951,24 @@ class delvac(StatesGroup):
 
 @dp.message_handler(commands="remove_vacation_notif", state="*")
 async def name_step(message: types.Message, state: FSMContext):
-    await message.reply("Выберите какое напоминание хотите удалить и введите его тэг: \n")
-    m = ''
-    for i in notiflist:
-        m += (i+'\n')
-    await message.answer(m)
-    print(notiflist)
-    await delvac.id.set()
+    global adminlist
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad1.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+            if adid in listofadmins:
+                await message.reply("Выберите какое напоминание хотите удалить и введите его тэг: \n")
+                m = ''
+                for i in notiflist:
+                    m += (i+'\n')
+                await message.answer(m)
+                await delvac.id.set()
 
 @dp.message_handler(state=delvac.id, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
@@ -926,7 +991,6 @@ async def fname_step(message: types.Message, state: FSMContext):
                     await acur.execute(
                         f"ALTER TABLE {notifinchatid} DROP COLUMN {tag1} CASCADE")
     await message.reply("Напоминание успешно удалено.")
-    print(notiflist)
     await state.finish()
 
 async def deletadmedb(adminlist):
@@ -952,10 +1016,10 @@ async def delbd(message, state: FSMContext):
             rec = await acur.fetchall()
             for row in rec:
                 listofadmins.append(row[0])
-                if adid in listofadmins:
-                    await deletadmedb(adminlist)
-                    await message.reply(f"Таблица {adminlist} успешно удалена!")
-            listofadmins.clear()
+            if adid in listofadmins:
+                await deletadmedb(adminlist)
+                await message.reply(f"Таблица {adminlist} успешно удалена!")
+        listofadmins.clear()
     await state.finish()
 
 async def delfromadmindb(adminlist, id):
@@ -983,15 +1047,14 @@ async def delfdb(message, state: FSMContext):
             rec = await acur.fetchall()
             for row in rec:
                 listofadmins.append(row[0])
-                print(listofadmins)
-                if adid in listofadmins:
-                    await message.reply(text=f'Вы удаляете данные из таблицы {adminlist}')
-                    await message.answer("Введите id админа, которого хотите удалить из таблицы")
-                    await state.finish()
-                    await ad14.ad1.set()
-                else:
-                    await message.reply("Проверьте ввод!")
-            listofadmins.clear()
+            if adid in listofadmins:
+                await message.reply(text=f'Вы удаляете данные из таблицы {adminlist}')
+                await message.answer("Введите id админа, которого хотите удалить из таблицы")
+                await state.finish()
+                await ad14.ad1.set()
+            else:
+                await message.reply("Проверьте ввод!")
+        listofadmins.clear()
 @dp.message_handler(state=ad14.ad1, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
     global adminlist
@@ -1016,10 +1079,22 @@ class nedm(StatesGroup):
     name1 = ''
 
 
-@dp.message_handler(commands="nedm", state="*")
+@dp.message_handler(commands="add_everyday_notif", state="*")
 async def name_step(message: types.Message, state: FSMContext):
-    await message.reply(text='Отправьте время, в которое будет отправляться данное сообщение: ')
-    await nedm.times.set()
+    global adminlist
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad1.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+            if adid in listofadmins:
+                await message.reply(text='Отправьте время, в которое будет отправляться данное сообщение: ')
+                await nedm.times.set()
 
 @dp.message_handler(state=nedm.times, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
@@ -1070,8 +1145,6 @@ async def fname_step(message: types.Message, state: FSMContext):
     scheduler.add_job(job, 'cron', hour=int(tl[0]), minute=int(tl[1]), id=nedm.tag1, name=nedm.name1)
     notiflist.append(nedm.tag1 + ' - ' + nedm.name1)
     await message.reply("Напоминание установлено.")
-    print(nedm.times1, ' ', nedm.theme1, ' ', nedm.tag1)
-    print(notiflist)
     await state.finish()
 
 
@@ -1083,13 +1156,24 @@ class delnots(StatesGroup):
 
 @dp.message_handler(commands="remeverydaysch", state="*")
 async def name_step(message: types.Message, state: FSMContext):
-    await message.reply("Выберите какое напоминание хотите удалить и введите его тэг: \n")
-    m = ''
-    for i in notiflist:
-        m += (i+'\n')
-    await message.answer(m)
-    print(notiflist)
-    await delnots.id.set()
+    global adminlist
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad1.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+            if adid in listofadmins:
+                await message.reply("Выберите какое напоминание хотите удалить и введите его тэг: \n")
+                m = ''
+                for i in notiflist:
+                    m += (i+'\n')
+                await message.answer(m)
+                await delnots.id.set()
 
 @dp.message_handler(state=delnots.id, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
@@ -1112,7 +1196,6 @@ async def fname_step(message: types.Message, state: FSMContext):
                     await acur.execute(
                         f"ALTER TABLE {notifinchatid} DROP COLUMN {tag1} CASCADE")
     await message.reply("Напоминание успешно удалено.")
-    print(notiflist)
     await state.finish()
 
 ################### new every week notif #################
@@ -1133,12 +1216,24 @@ class newm(StatesGroup):
     name1 = ''
 
 
-@dp.message_handler(commands="newm", state="*")
+@dp.message_handler(commands="add_everyweek_notif", state="*")
 async def name_step(message: types.Message, state: FSMContext):
-    await message.reply(text='Отправьте день недели (0-6, понедельник-воскресенье соответствено) и время, в которое будет отправляться данное напоминание: \n'
-                              'Пример: \n2\n18:00\n\n'
-                              'Расшифровка: напоминание будет отправляться каждую среду в 18:00')
-    await newm.date.set()
+    global adminlist
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad1.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+            if adid in listofadmins:
+                await message.reply(text='Отправьте день недели (0-6, понедельник-воскресенье соответствено) и время, в которое будет отправляться данное напоминание: \n'
+                                              'Пример: \n2\n18:00\n\n'
+                                              'Расшифровка: напоминание будет отправляться каждую среду в 18:00')
+                await newm.date.set()
 
 @dp.message_handler(state=newm.date, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
@@ -1193,19 +1288,28 @@ async def fname_step(message: types.Message, state: FSMContext):
     scheduler.add_job(job, 'cron', day_of_week=int(newm.date1),  hour=int(tl[0]), minute=int(tl[1]), id=newm.tag1, name=newm.name1)
     notiflist.append(newm.tag1 + ' - ' + newm.name1)
     await message.reply("Напоминание установлено.")
-    print(newm.date1, ' ', newm.time1, ' ', newm.theme1, ' ', newm.tag1)
-    print(notiflist)
     await state.finish()
 
 @dp.message_handler(commands="remeveryweeksch", state="*")
 async def name_step(message: types.Message, state: FSMContext):
-    await message.reply("Выберите какое напоминание хотите удалить и введите его тэг: \n")
-    m = ''
-    for i in notiflist:
-        m += (i+'\n')
-    await message.answer(m)
-    print(notiflist)
-    await delnots1.id.set()
+    global adminlist
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad1.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+            if adid in listofadmins:
+                await message.reply("Выберите какое напоминание хотите удалить и введите его тэг: \n")
+                m = ''
+                for i in notiflist:
+                    m += (i+'\n')
+                await message.answer(m)
+                await delnots1.id.set()
 
 @dp.message_handler(state=delnots1.id, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
@@ -1220,7 +1324,6 @@ async def fname_step(message: types.Message, state: FSMContext):
             notiflist.remove(i)
             # taglist.remove(i)
             tag = "'" + delnots1.id1 + "'"
-            print(tag)
             async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
                 async with aconn.cursor() as acur:
                     await acur.execute(
@@ -1228,7 +1331,6 @@ async def fname_step(message: types.Message, state: FSMContext):
                     await acur.execute(
                         f"ALTER TABLE {notifinchatid} DROP COLUMN {tag} CASCADE")
     await message.reply("Напоминание успешно удалено.")
-    print(notiflist)
     await state.finish()
 
 
@@ -1250,12 +1352,24 @@ class nemm(StatesGroup):
     name1 = ''
 
 
-@dp.message_handler(commands="nemm", state="*")
+@dp.message_handler(commands="add_everymonth_notif", state="*")
 async def name_step(message: types.Message, state: FSMContext):
-    await message.reply(text='Отправьте день месяца и время, в которое будет отправляться данное напоминание: \n'
-                              'Пример: \n28\n18:00\n\n'
-                              'Расшифровка: напоминание будет отправляться каждый месяц 28 числа в 18:00')
-    await nemm.date.set()
+    global adminlist
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad1.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+            if adid in listofadmins:
+                await message.reply(text='Отправьте день месяца и время, в которое будет отправляться данное напоминание: \n'
+                                              'Пример: \n28\n18:00\n\n'
+                                              'Расшифровка: напоминание будет отправляться каждый месяц 28 числа в 18:00')
+                await nemm.date.set()
 
 @dp.message_handler(state=nemm.date, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
@@ -1311,19 +1425,28 @@ async def fname_step(message: types.Message, state: FSMContext):
     scheduler.add_job(job, 'cron', day=int(nemm.date1), hour=int(tl[0]), minute=int(tl[1]), id=nemm.tag1,
                       name=nemm.name1)
     await message.reply("Напоминание установлено.")
-    print(nemm.date1, ' ', nemm.time1, ' ', nemm.theme1, ' ', nemm.tag1)
-    print(notiflist)
     await state.finish()
 
 @dp.message_handler(commands="remeverymounthsch", state="*")
 async def name_step(message: types.Message, state: FSMContext):
-    await message.answer("Выберите какое напоминание хотите удалить и введите его тэг: \n")
-    m = ''
-    for i in notiflist:
-        m += (i+'\n')
-    await message.answer(m)
-    print(notiflist)
-    await delnots2.id.set()
+    global adminlist
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad1.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+            if adid in listofadmins:
+                await message.answer("Выберите какое напоминание хотите удалить и введите его тэг: \n")
+                m = ''
+                for i in notiflist:
+                    m += (i+'\n')
+                await message.answer(m)
+                await delnots2.id.set()
 
 @dp.message_handler(state=delnots2.id, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
@@ -1339,7 +1462,6 @@ async def fname_step(message: types.Message, state: FSMContext):
             notiflist.remove(i)
             # taglist.remove(i)
             tag = "'" + delnots2.id1 + "'"
-            print(tag)
             async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
                 async with aconn.cursor() as acur:
                     await acur.execute(
@@ -1348,7 +1470,6 @@ async def fname_step(message: types.Message, state: FSMContext):
                         f"ALTER TABLE {notifinchatid} DROP COLUMN {tag} CASCADE")
     #
     await message.reply("Напоминание успешно удалено.")
-    print(notiflist)
     await state.finish()
 
 
@@ -1435,14 +1556,26 @@ async def age_step(message: types.Message, state: FSMContext):
 
 @dp.message_handler(commands="vote", state="*")
 async def showbd(message, state: FSMContext):
-    await message.reply(text='/send_now_vote - голосование отправится сразу без ограничения по времени\n'
-                             '/send_now_vote_ogrvr - голосование отправится сразу c ограничения по времени\n'
-                             '/everyday_vote - голосование отправится каждый день без ограничением по времени\n'
-                             '/everyday_vote_ogr - голосование отправится каждый день с ограничением по времени\n'
-                             '/everyweek_vote - голосование отправится каждую неделю без ограничением по времени\n'
-                             '/everyweek_vote_ogr - голосование отправится каждую неделю с ограничением по времени\n'
-                             '/everymonth_vote - голосование отправится каждый месяц без ограничением по времени\n'
-                             '/everymonth_vote_ogr - голосование отправится каждый месяц с ограничением по времени\n')
+    global adminlist
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad1.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+            if adid in listofadmins:
+                await message.reply(text='/send_now_vote - голосование отправится сразу без ограничения по времени\n'
+                                             '/send_now_vote_ogrvr - голосование отправится сразу c ограничения по времени\n'
+                                             '/everyday_vote - голосование будет отправляться каждый день без ограничения по времени\n'
+                                             '/everyday_vote_ogr - голосование будет отправляться каждый день с ограничением по времени\n'
+                                             '/everyweek_vote - голосование  будет отправляться каждую неделю без ограничения по времени\n'
+                                             '/everyweek_vote_ogr - голосование каждую неделю с ограничением по времени\n'
+                                             '/everymonth_vote -лять месяц без ограничения по времени\n'
+                                             '/everymonth_vote_ogr - голосование отправляться каждый месяц с ограничением по времени\n')
 
 class vote1(StatesGroup):
     time = State()
@@ -1477,7 +1610,6 @@ async def sn_vote2(message: types.Message, state: FSMContext):
     vote1.var1 = message.text.split('\n')
     tl = vote1.time1.split(':')
     async def job():
-        print(chatlist)
         for i in chatlist:
             await bot.send_poll(i, vote1.them, options=vote1.var1, is_anonymous=False)
     scheduler.add_job(job, 'cron', hour=int(tl[0]), minute=int(tl[1]))
@@ -1497,8 +1629,20 @@ class vote12(StatesGroup):
 
 @dp.message_handler(commands="everyday_vote_ogr", state="*")
 async def evD_vote(message, state: FSMContext):
-    await message.reply(text='Отправьте время, когда будет отпраляться голосование')
-    await vote12.time.set()
+    global adminlist
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad1.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+            if adid in listofadmins:
+                await message.reply(text='Отправьте время, в которое будет отпраляться голосование')
+                await vote12.time.set()
 
 @dp.message_handler(state=vote12.time, content_types=types.ContentType.TEXT)
 async def evD_vote1_time(message: types.Message, state: FSMContext):
@@ -1525,11 +1669,25 @@ async def evD_vote1_tema(message: types.Message, state: FSMContext):
 async def sn_vote2(message: types.Message, state: FSMContext):
     vote12.var1 = message.text.split('\n')
     tl = vote12.time1.split(':')
+    global everyday
+    global notifinchatid
+    global taglist
+    global notiflist
+    tag1 = "'" + vote12.tag1 + "'"
+    tag = vote12.tag1
+    cav = "'"
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(
+                f"ALTER TABLE {notifinchatid} ADD COLUMN {tag} BOOLEAN")  # ОПАНА
+            await acur.execute(
+                f"UPDATE {notifinchatid} SET {tag} = true")
     async def job():
-        print(chatlist)
         for i in chatlist:
             await bot.send_poll(i, vote12.them, options=vote12.var1, is_anonymous=False, open_period=int(vote12.ogr1)*60)
-    scheduler.add_job(job, 'cron', hour=int(tl[0]), minute=int(tl[1]))
+    scheduler.add_job(job, 'cron', hour=int(tl[0]), minute=int(tl[1]), id=vote12.tag1, name=vote12.name1)
+    notiflist.append(vote12.tag1 + ' - ' + vote12.name1)
+    taglist.append(vote12.tag1)
     await message.reply("Голосование установлено")
     await state.finish()
 
@@ -1541,9 +1699,21 @@ class vote2(StatesGroup):
 
 @dp.message_handler(commands="send_now_vote", state="*")
 async def sn_vote(message, state: FSMContext):
-    global chatlist
-    await message.answer(text='Отправьте тему голосования')
-    await vote2.vote_theme.set()
+    global adminlist
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad1.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+            if adid in listofadmins:
+                global chatlist
+                await message.answer(text='Отправьте тему голосования')
+                await vote2.vote_theme.set()
 
 @dp.message_handler(state=vote2.vote_theme, content_types=types.ContentType.TEXT)
 async def sn_vote2(message: types.Message, state: FSMContext):
@@ -1555,7 +1725,6 @@ async def sn_vote2(message: types.Message, state: FSMContext):
 async def sn_vote2(message: types.Message, state: FSMContext):
     global chatlist
     vote2.var1 = message.text.split('\n')
-    print(chatlist)
     for i in chatlist:
         await bot.send_poll(i, vote2.them, options=vote2.var1, is_anonymous=False)
     await state.finish()
@@ -1571,8 +1740,20 @@ class vote2_2(StatesGroup):
 
 @dp.message_handler(commands="send_now_vote_ogrvr", state="*")
 async def sn_vote(message, state: FSMContext):
-    await message.reply(text='Введите время на голосование в минутах (до 10)')
-    await vote2_2.ogr.set()
+    global adminlist
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad1.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+            if adid in listofadmins:
+                await message.reply(text='Введите время на голосование в минутах (до 10)')
+                await vote2_2.ogr.set()
 
 @dp.message_handler(state=vote2_2.ogr, content_types=types.ContentType.TEXT)
 async def sn_vote2(message: types.Message, state: FSMContext):
@@ -1590,7 +1771,6 @@ async def sn_vote2(message: types.Message, state: FSMContext):
 async def sn_vote2(message: types.Message, state: FSMContext):
     vote2_2.var1 = message.text.split('\n')
     async def job():
-        print(chatlist)
         for i in chatlist:
             await bot.send_poll(i, vote2_2.them, options=vote2_2.var1, is_anonymous=False, open_period=int(vote2_2.ogr1)*60)
     await state.finish()
@@ -1608,10 +1788,22 @@ class vote3(StatesGroup):
 
 @dp.message_handler(commands="everyweek_vote", state="*")
 async def name_step(message: types.Message, state: FSMContext):
-    await message.reply(text='Отправьте день недели (0-6, понедельник-воскресенье соответствено) и время, в которое будет отправляться голосование: \n'
-                              'Пример: \n2\n18:00\n\n'
-                              'Расшифровка: голосование будет отправляться каждую среду в 18:00')
-    await vote3.date.set()
+    global adminlist
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad1.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+            if adid in listofadmins:
+                await message.reply(text='Отправьте день недели (0-6, понедельник-воскресенье соответствено) и время, в которое будет отправляться голосование: \n'
+                                              'Пример: \n2\n18:00\n\n'
+                                              'Расшифровка: голосование будет отправляться каждую среду в 18:00')
+                await vote3.tag.set()
 
 @dp.message_handler(state=vote3.date, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
@@ -1632,13 +1824,16 @@ async def evD_vote1_tema(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state=vote3.var, content_types=types.ContentType.TEXT)
 async def sn_vote2(message: types.Message, state: FSMContext):
+    global taglist
+    global notiflist
     vote3.var1 = message.text.split('\n')
     tl = vote3.time1.split(':')
     async def job():
-        print(chatlist)
         for i in chatlist:
             await bot.send_poll(i, vote3.them, options=vote3.var1, is_anonymous=False)
-    scheduler.add_job(job, 'cron', day_of_week=int(vote3.date1), hour=int(tl[0]), minute=int(tl[1]))
+    scheduler.add_job(job, 'cron', day_of_week=int(vote3.date1), hour=int(tl[0]), minute=int(tl[1]), id=vote3.tag1, name=vote3.name1)
+    notiflist.append(vote3.tag1 + ' - ' + vote3.name1)
+    taglist.append(vote3.tag1)
     await message.reply("Голосование установлено")
     await state.finish()
 
@@ -1656,10 +1851,22 @@ class vote32(StatesGroup):
 
 @dp.message_handler(commands="everyweek_vote_ogr", state="*")
 async def name_step(message: types.Message, state: FSMContext):
-    await message.reply(text='Отправьте день недели (0-6, понедельник-воскресенье соответствено) и время, в которое будет отправляться голосование: \n'
-                              'Пример: \n2\n18:00\n\n'
-                              'Расшифровка: голосование будет отправляться каждую среду в 18:00')
-    await vote32.date.set()
+    global adminlist
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad1.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+            if adid in listofadmins:
+                await message.reply(text='Отправьте день недели (0-6, понедельник-воскресенье соответствено) и время, в которое будет отправляться голосование: \n'
+                                              'Пример: \n2\n18:00\n\n'
+                                              'Расшифровка: голосование будет отправляться каждую среду в 18:00')
+                await vote32.date.set()
 
 @dp.message_handler(state=vote32.date, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
@@ -1686,13 +1893,16 @@ async def evD_vote1_tema(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state=vote32.var, content_types=types.ContentType.TEXT)
 async def sn_vote2(message: types.Message, state: FSMContext):
+    global notiflist
+    global taglist
     vote32.var1 = message.text.split('\n')
     tl = vote32.time1.split(':')
     async def job():
-        print(chatlist)
         for i in chatlist:
             await bot.send_poll(i, vote32.them, options=vote32.var1, is_anonymous=False, open_period=int(vote32.ogr1)*60)
-    scheduler.add_job(job, 'cron', day_of_week=int(vote32.date1), hour=int(tl[0]), minute=int(tl[1]))
+    scheduler.add_job(job, 'cron', day_of_week=int(vote32.date1), hour=int(tl[0]), minute=int(tl[1]), id=vote32.tag1, name=vote32.name1)
+    notiflist.append(vote32.tag1 + ' - ' + vote32.name1)
+    taglist.append(vote32.tag1)
     await message.answer("Голосование установлено")
     await state.finish()
 
@@ -1710,10 +1920,22 @@ class vote4(StatesGroup):
 
 @dp.message_handler(commands="everymonth_vote", state="*")
 async def name_step(message: types.Message, state: FSMContext):
-    await message.reply(text='Отправьте день месяца и время, в которое будет отправляться голосование: \n'
-                              'Пример: \n28\n18:00\n\n'
-                              'Расшифровка: голосование будет отправляться каждый месяц 28 числа в 18:00')
-    await vote4.date.set()
+    global adminlist
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad1.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+            if adid in listofadmins:
+                await message.reply(text='Отправьте день месяца и время, в которое будет отправляться голосование: \n'
+                                              'Пример: \n28\n18:00\n\n'
+                                              'Расшифровка: голосование будет отправляться каждый месяц 28 числа в 18:00')
+                await vote4.tag.set()
 
 @dp.message_handler(state=vote4.date, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
@@ -1735,13 +1957,16 @@ async def evD_vote1_tema(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state=vote4.var, content_types=types.ContentType.TEXT)
 async def sn_vote2(message: types.Message, state: FSMContext):
+    global notiflist
+    global taglist
     vote4.var1 = message.text.split('\n')
     tl = vote4.time1.split(':')
     async def job():
-        print(chatlist)
         for i in chatlist:
             await bot.send_poll(i, vote4.them, options=vote4.var1, is_anonymous=False)
-    scheduler.add_job(job, 'cron', day=int(vote4.date1), hour=int(tl[0]), minute=int(tl[1]))
+    scheduler.add_job(job, 'cron', day=int(vote4.date1), hour=int(tl[0]), minute=int(tl[1]), id=vote4.tag1, name=vote4.name1)
+    notiflist.append(vote4.tag1 + ' - ' + vote4.name1)
+    taglist.append(vote4.tag1)
     await message.reply("Голосование установлено")
     await state.finish()
 
@@ -1759,10 +1984,22 @@ class vote42(StatesGroup):
 
 @dp.message_handler(commands="everymonth_vote_ogr", state="*")
 async def name_step(message: types.Message, state: FSMContext):
-    await message.reply(text='Отправьте день месяца и время, в которое будет отправляться голосование: \n'
-                              'Пример: \n28\n18:00\n\n'
-                              'Расшифровка: голосование будет отправляться каждый месяц 28 числа в 18:00')
-    await vote42.date.set()
+    global adminlist
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad1.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+            if adid in listofadmins:
+                await message.reply(text='Отправьте день месяца и время, в которое будет отправляться голосование: \n'
+                                              'Пример: \n28\n18:00\n\n'
+                                              'Расшифровка: голосование будет отправляться каждый месяц 28 числа в 18:00')
+                await vote42.date.set()
 
 @dp.message_handler(state=vote42.date, content_types=types.ContentTypes.TEXT)
 async def fname_step(message: types.Message, state: FSMContext):
@@ -1790,17 +2027,61 @@ async def evD_vote1_tema(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state=vote42.var, content_types=types.ContentType.TEXT)
 async def sn_vote2(message: types.Message, state: FSMContext):
+    global notiflist
+    global taglist
     vote42.var1 = message.text.split('\n')
     tl = vote42.time1.split(':')
     async def job():
-        print(chatlist)
         for i in chatlist:
             await bot.send_poll(i, vote42.them, options=vote42.var1, is_anonymous=False, open_period=int(vote42.ogr1)*60)
-    scheduler.add_job(job, 'cron', day=int(vote42.date1), hour=int(tl[0]), minute=int(tl[1]))
+    scheduler.add_job(job, 'cron', day=int(vote42.date1), hour=int(tl[0]), minute=int(tl[1]), id=vote42.tag1, name=vote42.name1)
+    notiflist.append(vote42.tag1 + ' - ' + vote42.name1)
+    taglist.append(vote42.tag1)
     await message.reply("Голосование установлено")
     await state.finish()
 
+class delvote(StatesGroup):
+    id = State()
+    id1 = ''
 
+
+@dp.message_handler(commands="remove_vote", state="*")
+async def name_step(message: types.Message, state: FSMContext):
+    global adminlist
+    global listofadmins
+    adid = message.from_user.id
+    adminlist = "admin" + chatdb
+    await ad1.ad.set()
+    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
+        async with aconn.cursor() as acur:
+            await acur.execute(f"SELECT id FROM {adminlist}")
+            rec = await acur.fetchall()
+            for row in rec:
+                listofadmins.append(row[0])
+            if adid in listofadmins:
+                await message.answer("Выберите какое напоминание хотите удалить и введите его тэг: \n")
+                m = ''
+                for i in notiflist:
+                    m += (i+'\n')
+                await message.answer(m)
+                await delvote.id.set()
+
+@dp.message_handler(state=delvote.id, content_types=types.ContentTypes.TEXT)
+async def fname_step(message: types.Message, state: FSMContext):
+    global everyday
+    delnots.id1 = message.text
+    if delnots.id1 not in taglist:
+        await message.reply("Пожалуйста, проверьте список напоминаний и введите тэг ещё раз")
+        return
+    await removeshed(delnots.id1)
+    for i in notiflist:
+        if delnots.id1 in i.split(' - '):
+            notiflist.remove(i)
+            # taglist.remove(i)
+            tag = "'" + delnots.id1 + "'"
+            tag1 = delnots.id1
+    await message.reply("Напоминание успешно удалено.")
+    await state.finish()
 
 scheduler.start()
 
