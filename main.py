@@ -2044,7 +2044,6 @@ class delvote(StatesGroup):
     id = State()
     id1 = ''
 
-
 @dp.message_handler(commands="remove_vote", state="*")
 async def name_step(message: types.Message, state: FSMContext):
     global adminlist
