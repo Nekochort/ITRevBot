@@ -72,33 +72,34 @@ async def start_com(message: types.Message):
 @dp.message_handler(commands=["help"])
 async def help_com(message: types.Message):
     await message.reply("==========Команды для работы с БД==========\n"
+                        "/add_db - создание или установка активной основной таблицы чата"
                         "/add_notifdb - создание таблиц уведомлений группы\n"
                         "/send_my_id - отправка ID пользователя админам\n"
                         "/reg_admin - регистрация админов\n"
                         "/add_to_db - добавление пользователя в таблицу\n"
-                        "/delete_db - удалние таблицы чата\n"
-                        "/delete_notif_db - удаление таблиц уведомлений\n"
-                        "/delete_from_db - удаление пользователя из таблицы\n"
                         "/edit_chat_db - вызов возможных команд для редактирования таблицы\n"
-                        "/start_birthday - настройка рассылки напоминаний о ДР\n"
-                        "/remove_birthday_notif - удаление уведомления о ДР\n"
-                        "/start_vacation - настройка рассылки напоминаний об отпусках\n"
-                        "/remove_vacation_notif - удаление уведомления об отпусках\n"
-                        "/delete_admin_db - удаление таблицы админов чата\n"
+                        "/delete_from_db - удаление пользователя из таблицы\n"
                         "/delete_from_admin_db - удаление админа из таблицы\n"
+                        "/delete_db - удаление таблицы чата\n"
+                        "/delete_notif_db - удаление таблиц уведомлениё й\n"
+                        "/delete_admin_db - удаление таблицы админов чата\n"
                         "==========Команды для работы с уведомлениями==========\n"
-                        "/add_everyday_notif - настройка ежедневных уведомлений\n"
-                        "/remeverydaysch - удаление ежедневного уведомления\n"
-                        "/add_everyweek_notif - настройка еженедельных уведомлений\n"
+                        "/add_everyday_notif - создание ежедневных уведомлений\n"
+                        "/remeverydaysch - удаление ежедневных уведомления\n"
+                        "/add_everyweek_notif - создание еженедельных уведомлений\n"
+                        "/start_birthday - создание рассылки напоминаний о ДР\n"
+                        "/remove_birthday_notif - удаление уведомления о ДР\n"
+                        "/start_vacation - создание рассылки напоминаний об отпусках\n"
+                        "/remove_vacation_notif - удаление уведомления об отпусках\n"
                         "/show_all_birthday - вывод всех пользователей, подписанных на уведомления о ДР\n"
                         "/show_all_vacation - вывод всех пользователей, подписанных на уведомления об отпусках\n"
-                        "/remeveryweeksch - удаление ежедневных уведомлений\n"
-                        "/add_everymonth_notif - настройка ежемесячных уведомлений\n"
+                        "/remeveryweeksch - удаление еженедельных уведомлений\n"
+                        "/add_everymonth_notif - создание ежемесячных уведомлений\n"
                         "/remeverymounthsch - удаление ежемесячных уведомлений\n"
-                        "/edit_notif_settings - настройка подписки и отписки на уведомления о ДР и отпусках\n"
+                        "/edit_notif_settings - настройка подписки и отписки на уведомления о ДР и отпусках(для всех пользователей)\n"
                         "==========Команды для работы с опросами==========\n"
                         "/vote - вывод всех команд для взаимодействия с опросами\n"
-                        "/remove_vote - удаление опроса")
+                        "/remove_vote - удаление опросов")
 
 # whw - переменная,имеющая значение +неделю, от текущей даты
 whw = arrow.utcnow().shift(weeks=1)
@@ -148,13 +149,13 @@ async def start_command(message: types.Message, state: FSMContext):
 async def adminreg(mes,adminlist, userid):
     async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
         async with aconn.cursor() as acur:
-            await acur.execute(f"CREATE TABLE IF NOT EXISTS {adminlist} (id Bigint UNIQUE)")
             try:
+                await acur.execute(f"CREATE TABLE IF NOT EXISTS {adminlist} (id Bigint UNIQUE)")
                 await acur.execute(
                     f"INSERT INTO {adminlist} (id) VALUES ({userid})")
-                await message.reply(f"Админ добавлен в {adminlist}!")
+                await bot.send_message(mes ,f"Админ добавлен в {adminlist}!")
             except:
-                await bot.send_message(mes, "Ты уже добавлен в таблицу!")
+                await bot.send_message(mes, f"Админ уже добавлен в таблицу {adminlist}")
 
 
 class adreg(StatesGroup):
@@ -174,7 +175,10 @@ async def process_add_db_command(message: types.Message, state: FSMContext):
     adminlist = "admin" + chatdb
     userid = message.from_user.id
     listofadmins.append(userid)
-    chatlist.append(message.chat.id)
+    if message.chat.id in chatlist:
+        pass
+    if message.chat.id not in chatlist:
+        chatlist.append(message.chat.id)
     await adreg.regad.set()
     await adminreg(mes,adminlist, userid)
     await state.finish()
@@ -1002,7 +1006,7 @@ class ad13(StatesGroup):
     ad = State()
 
 
-@dp.message_handler(commands="delete_admin_db", state="*")
+@dp.message_handler(is_admin = True, commands="delete_admin_db", state="*")
 async def delbd(message, state: FSMContext):
     global adminlist
     global chatdb
@@ -1010,16 +1014,9 @@ async def delbd(message, state: FSMContext):
     adminlist = "admin" + chatdb
     adid = message.from_user.id
     await ad2.ad.set()
-    async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
-        async with aconn.cursor() as acur:
-            await acur.execute(f"SELECT id FROM {adminlist}")
-            rec = await acur.fetchall()
-            for row in rec:
-                listofadmins.append(row[0])
-            if adid in listofadmins:
-                await deletadmedb(adminlist)
-                await message.reply(f"Таблица {adminlist} успешно удалена!")
-        listofadmins.clear()
+    await deletadmedb(adminlist)
+    await message.reply(f"Таблица {adminlist} успешно удалена!")
+    listofadmins.clear()
     await state.finish()
 
 async def delfromadmindb(adminlist, id):
@@ -1399,6 +1396,8 @@ async def age_step(message: types.Message, state: FSMContext):
 async def fname_step(message: types.Message, state: FSMContext):
     global everymounth
     global notifinchatid
+    global notiflist
+    global taglist
     nemm.name1 = message.text
     tl = nemm.time1.split(':')
     tag = "'" + nemm.tag1 + "'"
@@ -1424,6 +1423,8 @@ async def fname_step(message: types.Message, state: FSMContext):
 
     scheduler.add_job(job, 'cron', day=int(nemm.date1), hour=int(tl[0]), minute=int(tl[1]), id=nemm.tag1,
                       name=nemm.name1)
+    notiflist.append(nemm.tag1 + ' - ' + nemm.name1)
+    taglist.append(nemm.tag1)
     await message.reply("Напоминание установлено.")
     await state.finish()
 
@@ -1462,12 +1463,13 @@ async def fname_step(message: types.Message, state: FSMContext):
             notiflist.remove(i)
             # taglist.remove(i)
             tag = "'" + delnots2.id1 + "'"
+            tag1 = delnots2.id1
             async with await psycopg.AsyncConnection.connect(DB_URI, sslmode="require") as aconn:
                 async with aconn.cursor() as acur:
                     await acur.execute(
                         f"DELETE FROM {everymounth} WHERE tag = {tag}")
                     await acur.execute(
-                        f"ALTER TABLE {notifinchatid} DROP COLUMN {tag} CASCADE")
+                        f"ALTER TABLE {notifinchatid} DROP COLUMN {tag1} CASCADE")
     #
     await message.reply("Напоминание успешно удалено.")
     await state.finish()
@@ -1572,10 +1574,10 @@ async def showbd(message, state: FSMContext):
                                              '/send_now_vote_ogrvr - голосование отправится сразу c ограничения по времени\n'
                                              '/everyday_vote - голосование будет отправляться каждый день без ограничения по времени\n'
                                              '/everyday_vote_ogr - голосование будет отправляться каждый день с ограничением по времени\n'
-                                             '/everyweek_vote - голосование  будет отправляться каждую неделю без ограничения по времени\n'
-                                             '/everyweek_vote_ogr - голосование каждую неделю с ограничением по времени\n'
-                                             '/everymonth_vote -лять месяц без ограничения по времени\n'
-                                             '/everymonth_vote_ogr - голосование отправляться каждый месяц с ограничением по времени\n')
+                                             '/everyweek_vote - голосование будут отправляться каждую неделю без ограничения по времени\n'
+                                             '/everyweek_vote_ogr - голосование будут отправляться каждую неделю с ограничением по времени\n'
+                                             '/everymonth_vote - голосование будут отправляться каждый месяц без ограничения по времени\n'
+                                             '/everymonth_vote_ogr - голосование будут отправляться каждый месяц с ограничением по времени\n')
 
 class vote1(StatesGroup):
     time = State()
@@ -1770,9 +1772,8 @@ async def sn_vote2(message: types.Message, state: FSMContext):
 @dp.message_handler(state=vote2_2.var, content_types=types.ContentType.TEXT)
 async def sn_vote2(message: types.Message, state: FSMContext):
     vote2_2.var1 = message.text.split('\n')
-    async def job():
-        for i in chatlist:
-            await bot.send_poll(i, vote2_2.them, options=vote2_2.var1, is_anonymous=False, open_period=int(vote2_2.ogr1)*60)
+    for i in chatlist:
+        await bot.send_poll(i, vote2_2.them, options=vote2_2.var1, is_anonymous=False, open_period=int(vote2_2.ogr1)*60)
     await state.finish()
 
 class vote3(StatesGroup):
